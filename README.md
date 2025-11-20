@@ -79,6 +79,8 @@ git push origin dev/task-01-public-layout
 
 #### **Task 1 – Public Layout (Header, Footer, Layout chung)**
 
+> 👤 **Người phụ trách**: Trâm Anh
+
 Tạo layout dùng chung cho các trang public.
 
 - **Header**: logo, menu (Trang chủ, Sản phẩm, Khuyến mãi, Liên hệ/Giới thiệu), ô search, icon giỏ hàng, login/register
@@ -89,6 +91,8 @@ Tạo layout dùng chung cho các trang public.
 
 #### **Task 2 – Trang Home**
 
+> 👤 **Người phụ trách**: Trâm Anh
+
 - Banner
 - Section sản phẩm nổi bật / bán chạy
 - Section danh mục sản phẩm (Gọng kính, Tròng kính, …)
@@ -98,6 +102,8 @@ Tạo layout dùng chung cho các trang public.
 
 #### **Task 3 – Trang danh sách sản phẩm (Product Listing Page)**
 
+> 👤 **Người phụ trách**: Trâm Anh
+
 - Trang `/products`: hiển thị grid sản phẩm (ảnh, tên, giá, rating)
 - Phân trang hoặc nút "Load more"
 - Responsive
@@ -106,6 +112,8 @@ Tạo layout dùng chung cho các trang public.
 
 #### **Task 4 – Bộ lọc & tìm kiếm sản phẩm (UI Only)**
 
+> 👤 **Người phụ trách**: Trâm Anh
+
 - **UI filter**: theo giá, thương hiệu, kiểu dáng, chất liệu
 - **UI sort**: giá tăng/giảm, mới nhất
 - Kết nối filter/sort với state tạm thời
@@ -113,6 +121,8 @@ Tạo layout dùng chung cho các trang public.
 ---
 
 #### **Task 5 – Trang chi tiết sản phẩm (Product Detail Page)**
+
+> 👤 **Người phụ trách**: Trâm Anh
 
 - Hiển thị ảnh (carousel UI nếu cần), tên, giá, mô tả, thông số kỹ thuật, tồn kho
 - Chọn số lượng
@@ -123,6 +133,8 @@ Tạo layout dùng chung cho các trang public.
 
 #### **Task 6 – Trang giỏ hàng (Cart Page)**
 
+> 👤 **Người phụ trách**: Minh Duy
+
 - Bảng danh sách sản phẩm trong giỏ: ảnh, tên, giá, số lượng, thành tiền
 - Nút +/− số lượng, nút xóa sản phẩm
 - Hiển thị tổng tiền
@@ -130,6 +142,8 @@ Tạo layout dùng chung cho các trang public.
 ---
 
 #### **Task 7 – Trang Checkout (UI)**
+
+> 👤 **Người phụ trách**: Minh Duy
 
 - Form thông tin giao hàng: họ tên, số điện thoại, địa chỉ, email
 - Chọn phương thức giao hàng
@@ -140,6 +154,8 @@ Tạo layout dùng chung cho các trang public.
 ---
 
 #### **Task 8 – Trang lịch sử đơn hàng (Order History – UI)**
+
+> 👤 **Người phụ trách**: Minh Duy
 
 - Trang danh sách đơn hàng
 - Filter theo trạng thái: Chờ xác nhận, Đang giao, Đã giao, Đã hủy
@@ -177,6 +193,8 @@ Tạo layout dùng chung cho các trang public.
 
 #### **Task 12 – Trang Đăng ký (Register Page)**
 
+> 👤 **Người phụ trách**: Tuấn Huy
+
 - Form: Họ tên, Email, SĐT, Địa chỉ, Mật khẩu, Xác nhận mật khẩu
 - Validate cơ bản (required, confirm password, format email)
 - Chỗ hiển thị lỗi email bị trùng
@@ -185,6 +203,8 @@ Tạo layout dùng chung cho các trang public.
 
 #### **Task 13 – Trang Đăng nhập (Login Page)**
 
+> 👤 **Người phụ trách**: Tuấn Huy
+
 - Form: Email + Mật khẩu
 - Link "Quên mật khẩu"
 - Field nhập mã OTP (2FA) – hiển thị khi cần thiết
@@ -192,6 +212,8 @@ Tạo layout dùng chung cho các trang public.
 ---
 
 #### **Task 14 – Flow Quên mật khẩu / Reset password (UI Flow)**
+
+> 👤 **Người phụ trách**: Tuấn Huy
 
 - Trang nhập email để yêu cầu reset
 - Trang nhập OTP hoặc token + mật khẩu mới
