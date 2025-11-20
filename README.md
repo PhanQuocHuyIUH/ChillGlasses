@@ -68,7 +68,7 @@ git checkout -b dev/task-01-public-layout
 git add .
 git commit -m "feat: implement public layout with header and footer"
 git push origin dev/task-01-public-layout
-# Tạo PR: dev/task-01-public-layout → dev trên github
+# Tạo PR: dev/task-01-public-layout → develop trên github
 ```
 
 ---
