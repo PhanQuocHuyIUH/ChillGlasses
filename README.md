@@ -20,15 +20,15 @@ npm run dev
 
 ### Quy tắc làm việc với Git
 
-⚠️ **QUAN TRỌNG**: Không commit trực tiếp lên `main` hoặc `dev`
+⚠️ **QUAN TRỌNG**: Không commit trực tiếp lên `main` hoặc `develop`
 
 ### Quy trình làm việc cho mỗi task:
 
-1. **Cập nhật nhánh dev**
+1. **Cập nhật nhánh develop**
 
    ```bash
-   git checkout dev
-   git pull origin dev
+   git checkout develop
+   git pull origin develop
    ```
 
 2. **Tạo nhánh mới cho task**
@@ -55,14 +55,14 @@ npm run dev
 
 5. **Tạo Pull Request**
 
-   - Tạo PR từ `dev/task-xxx` → `dev`
+   - Tạo PR từ `dev/task-xxx` → `develop`
 
 ### Ví dụ minh họa:
 
 ```bash
 # Task 1: Public Layout
-git checkout dev
-git pull origin dev
+git checkout develop
+git pull origin develop
 git checkout -b dev/task-01-public-layout
 # ... code xong ...
 git add .
