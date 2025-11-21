@@ -1,6 +1,6 @@
 import { FaSearch, FaShoppingCart, FaUser } from "react-icons/fa"; // Import thêm icon FaUser
 import Image from "next/image"; // Import Image from next/image
-import logo from "../../assets/logo_chill_glasses.jpg"; // Import logo (ensure the path is correct)
+import logo from "../../../public/images/logo_chill_glasses.jpg"; // Import logo (ensure the path is correct)
 
 const Header = () => {
   return (
