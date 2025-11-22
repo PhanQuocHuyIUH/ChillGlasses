@@ -2,8 +2,7 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 
 const layout = ({
-  children,
-  params,
+  children
 }: {
   children: React.ReactNode;
   params: { lang: string };
@@ -11,9 +10,9 @@ const layout = ({
   return (
     <>
       <div className="flex flex-col min-h-screen">
-        <Header lang={params.lang} />
+        <Header />
         {children}
-        <Footer lang={params.lang} />
+        <Footer />
       </div>
     </>
   );

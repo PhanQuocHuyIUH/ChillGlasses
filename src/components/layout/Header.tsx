@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import logo from "../../../public/images/logo_chill_glasses.jpg";
 
-const Header = ({ lang }: { lang: string }) => {
+const Header = () => {
   const [filters, setFilters] = useState({
     price: "",
     brand: "",
