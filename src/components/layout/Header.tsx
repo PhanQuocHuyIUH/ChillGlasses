@@ -1,25 +1,23 @@
-"use client"; 
+"use client";
 
-import { useState } from "react"; 
-import { FaSearch, FaShoppingCart, FaUser } from "react-icons/fa"; 
-import Image from "next/image"; // 
-import Link from "next/link"; 
-import logo from "../../../public/images/logo_chill_glasses.jpg"; 
+import { useState } from "react";
+import { FaSearch, FaShoppingCart, FaUser } from "react-icons/fa";
+import Image from "next/image";
+import Link from "next/link";
+import logo from "../../../public/images/logo_chill_glasses.jpg";
 
 const Header = () => {
-
   const [filters, setFilters] = useState({
-    price: "", // Giá
-    brand: "", // Thương hiệu
-    style: "", // Kiểu dáng
-    material: "", // Chất liệu
+    price: "",
+    brand: "",
+    style: "",
+    material: "",
   });
 
-  const [sort, setSort] = useState(""); 
+  const [sort, setSort] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [showFilters, setShowFilters] = useState(false); 
+  const [showFilters, setShowFilters] = useState(false);
 
-  // Hàm xử lý thay đổi filter
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({
       ...prev,
@@ -27,17 +25,14 @@ const Header = () => {
     }));
   };
 
-  // Hàm xử lý thay đổi sort
   const handleSortChange = (value: string) => {
     setSort(value);
   };
 
-  // Hàm xử lý khi nhấn nút tìm kiếm
   const handleSearch = () => {
     console.log("Từ khóa tìm kiếm:", searchTerm);
     console.log("Filters:", filters);
     console.log("Sort:", sort);
-    // Hiển thị filter và sort khi nhấn nút tìm kiếm
     setShowFilters(true);
   };
 
@@ -49,10 +44,10 @@ const Header = () => {
           <Image
             src={logo}
             alt="Logo Chill Glasses"
-            width={120} 
-            height={60} 
-            priority 
-            className="h-auto w-auto md:h-16" 
+            width={120}
+            height={60}
+            priority
+            className="h-auto w-auto md:h-16"
           />
         </Link>
         <nav>
@@ -96,7 +91,7 @@ const Header = () => {
               type="text"
               placeholder="Tìm kiếm..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)} // Cập nhật từ khóa tìm kiếm
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="outline-none px-2 text-sm"
             />
             <button
@@ -119,7 +114,7 @@ const Header = () => {
       </div>
 
       {/* Filter và Sort */}
-      {showFilters && ( // Chỉ hiển thị filter và sort khi showFilters = true
+      {showFilters && (
         <div className="bg-gray-100 py-4">
           <div className="container mx-auto flex flex-wrap items-center justify-between">
             {/* Filter */}
