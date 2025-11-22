@@ -1,7 +1,11 @@
-import { cn } from "@/lib/utils";
+
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import Image from "next/image"; // Import Image từ next/image
+import product1 from "../../public/images/product1.jpg";
+import product2 from "../../public/images/product2.jpg";
+import product3 from "../../public/images/product3.jpg";
+import product4 from "../../public/images/product4.jpg";
 
 export default function Home() {
   return (
@@ -9,7 +13,7 @@ export default function Home() {
       <Header />
 
       {/* Banner */}
-      <section className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white py-16 text-center">
+      <section className="w-full bg-linear-to-r from-blue-500 to-indigo-500 text-white py-16 text-center">
         <h1 className="text-4xl font-bold">Chào mừng đến với Chill Glasses</h1>
         <p className="mt-4 text-lg">Khám phá các sản phẩm kính thời trang và chất lượng cao</p>
       </section>
@@ -18,11 +22,7 @@ export default function Home() {
       <section className="container mx-auto py-12">
         <h2 className="text-2xl font-bold text-center mb-8">Sản phẩm nổi bật</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-          {[
-            "https://kinhmateyeplus.com/wp-content/uploads/2024/11/IMG_0338.png",
-            "https://kinhmateyeplus.com/wp-content/uploads/2024/11/IMG_9693-1.jpg",
-            "https://kinhmateyeplus.com/wp-content/uploads/2025/04/23096-c8.jpg",
-          ].map((product, index) => (
+          {[product1, product2, product3, product4].map((product, index) => (
             <div key={index} className="border rounded-lg p-4 shadow hover:shadow-lg">
               <Image
                 src={product}
@@ -42,17 +42,12 @@ export default function Home() {
       </section>
 
       {/* Khuyến mãi */}
-      <section className="w-full bg-gradient-to-r from-red-500 to-yellow-500 text-white py-16 text-center">
+      <section className="w-full bg-linear-to-r from-red-500 to-yellow-500 text-white py-16 text-center">
         <h2 className="text-3xl font-bold">Khuyến mãi hấp dẫn</h2>
         <p className="mt-4 text-lg">Giảm giá lên đến 50% cho các sản phẩm kính thời trang</p>
         <p className="mt-2 italic">Chất lượng hàng đầu - Giá cả phải chăng</p>
         <div className="container mx-auto mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-          {[
-            "https://kinhmateyeplus.com/wp-content/uploads/2024/11/IMG_0338.png",
-            "https://kinhmateyeplus.com/wp-content/uploads/2024/11/IMG_9693-1.jpg",
-            "https://kinhmateyeplus.com/wp-content/uploads/2025/04/23096-c8.jpg",
-            "https://kinhmateyeplus.com/wp-content/uploads/2025/08/00216-c4.jpg",
-          ].map((product, index) => (
+          {[product1, product2, product3, product4].map((product, index) => (
             <div key={index} className="border rounded-lg p-4 shadow hover:shadow-lg bg-white text-black">
               <Image
                 src={product}
