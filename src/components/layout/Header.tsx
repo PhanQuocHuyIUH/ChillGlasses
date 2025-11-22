@@ -60,24 +60,32 @@ const Header = () => {
               </Link>
             </li>
             <li>
-              <button className="hover:text-gray-500 font-bold px-4 py-2">
-                TRÒNG ĐỔI MÀU
-              </button>
+              <Link href="/products">
+                <button className="hover:text-gray-500 font-bold px-4 py-2">
+                  TRÒNG ĐỔI MÀU
+                </button>
+              </Link>
             </li>
             <li>
-              <button className="hover:text-gray-500 font-bold px-4 py-2">
-                KÍNH RÂM
-              </button>
+              <Link href="/products">
+                <button className="hover:text-gray-500 font-bold px-4 py-2">
+                  KÍNH RÂM
+                </button>
+              </Link>
             </li>
             <li>
-              <button className="hover:text-gray-500 font-bold px-4 py-2">
-                KHUYẾN MÃI
-              </button>
+              <Link href="/products">
+                <button className="hover:text-gray-500 font-bold px-4 py-2">
+                  KHUYẾN MÃI
+                </button>
+              </Link>
             </li>
             <li>
-              <button className="hover:text-gray-500 font-bold px-4 py-2">
-                GIỚI THIỆU
-              </button>
+              <Link href="/about-us">
+                <button className="hover:text-gray-500 font-bold px-4 py-2">
+                  GIỚI THIỆU
+                </button>
+              </Link>
             </li>
           </ul>
         </nav>
