@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link"; // Import Link từ next/link
 import product1 from "@/../public/images/product1.jpg";
 import product2 from "@/../public/images/product2.jpg";
 import product3 from "@/../public/images/product3.jpg";
 import product4 from "@/../public/images/product4.jpg";
-
 
 const allProducts = [
   {
@@ -66,21 +66,24 @@ const ProductListingPage = () => {
       <h1 className="text-3xl font-bold text-center mb-8">DANH SÁCH SẢN PHẨM</h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {allProducts.slice(0, visibleProducts).map((product) => (
-          <div
+          <Link
             key={product.id}
-            className="border rounded-lg p-4 shadow hover:shadow-lg transition-shadow"
+            href={`/products/${product.id}`} // Đường dẫn đến trang chi tiết sản phẩm
+            className="border rounded-lg p-4 shadow hover:shadow-lg transition-shadow block"
           >
-            <Image
-              src={product.image}
-              alt={product.name}
-              className="w-full h-40 object-cover rounded"
-              width={160}
-              height={160}
-            />
-            <h2 className="text-lg font-bold mt-4">{product.name}</h2>
-            <p className="text-gray-600 mt-2">Giá: {product.price}</p>
-            <p className="text-yellow-500 mt-2">Rating: {product.rating} ⭐</p>
-          </div>
+            <div>
+              <Image
+                src={product.image}
+                alt={product.name}
+                className="w-full h-40 object-cover rounded"
+                width={160}
+                height={160}
+              />
+              <h2 className="text-lg font-bold mt-4">{product.name}</h2>
+              <p className="text-gray-600 mt-2">Giá: {product.price}</p>
+              <p className="text-yellow-500 mt-2">Rating: {product.rating} ⭐</p>
+            </div>
+          </Link>
         ))}
       </div>
       {visibleProducts < allProducts.length && (
