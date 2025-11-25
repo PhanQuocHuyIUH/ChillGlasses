@@ -10,10 +10,23 @@ import Link from "next/link";
 
 export default function LoginPage() {
   const [step, setStep] = useState(1);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const handleLogin = () => {
+    if (!username.trim() || !password.trim()) {
+      setError("Vui lòng nhập đầy đủ thông tin");
+      return;
+    }
+    setError("");
+    setStep(2);
+  };
 
   return (
     <div className="w-full h-screen flex items-center justify-center bg-amber-50 p-4">
       <div className="flex w-full max-w-4xl bg-white rounded-3xl overflow-hidden">
+        
         <div className="hidden md:flex w-1/2 bg-gray-100 items-center justify-center p-6">
           <img
             src="/images/matkinh.jpg"
@@ -21,6 +34,7 @@ export default function LoginPage() {
             className="rounded-2xl w-full h-auto object-cover"
           />
         </div>
+
         <motion.div
           initial={{ opacity: 0, x: 30 }}
           animate={{ opacity: 1, x: 0 }}
@@ -36,6 +50,7 @@ export default function LoginPage() {
 
               <div className="space-y-4 mt-6">
                 <AnimatePresence mode="wait">
+
                   {step === 1 && (
                     <motion.div
                       key="login"
@@ -49,26 +64,43 @@ export default function LoginPage() {
                         type="text"
                         placeholder="Email hoặc Tên đăng nhập"
                         className="w-full"
+                        value={username}
+                        onChange={(e) => {
+                          setUsername(e.target.value);
+                          if (error) setError("");
+                        }}
                       />
+
                       <Input
                         type="password"
                         placeholder="Mật khẩu"
                         className="w-full"
+                        value={password}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          if (error) setError("");
+                        }}
                       />
+
+                      {error && (
+                        <p className="text-red-600 text-sm">{error}</p>
+                      )}
+
                       <div className="text-right">
                         <Link href="/forgot-password">
                           <button className="text-sm text-blue-600 hover:underline cursor-pointer">
                             Quên mật khẩu?
                           </button>
                         </Link>
-                        
                       </div>
+
                       <Button
                         className="w-full h-12 text-base font-medium bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
-                        onClick={() => setStep(2)}
+                        onClick={handleLogin}
                       >
                         Đăng nhập
                       </Button>
+
                       <Button
                         className="w-full h-12 text-base flex items-center justify-center gap-2 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 cursor-pointer"
                         variant="outline"
@@ -76,6 +108,7 @@ export default function LoginPage() {
                         <FcGoogle className="text-xl" />
                         Đăng nhập bằng Google
                       </Button>
+
                       <div className="text-center mt-2">
                         <Link href="/register">
                           <button className="text-sm text-blue-600 hover:underline font-medium cursor-pointer">
@@ -85,7 +118,6 @@ export default function LoginPage() {
                       </div>
                     </motion.div>
                   )}
-
                   {step === 2 && (
                     <motion.div
                       key="otp"
@@ -100,11 +132,10 @@ export default function LoginPage() {
                         placeholder="Nhập mã OTP"
                         className="w-full"
                       />
-                      <Button
-                        className="w-full h-12 text-base font-medium bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
-                      >
+                      <Button className="w-full h-12 text-base font-medium bg-blue-600 text-white hover:bg-blue-700 cursor-pointer">
                         Xác minh
                       </Button>
+
                       <div className="text-center mt-2">
                         <button
                           className="text-sm text-blue-600 hover:underline font-medium cursor-pointer"
@@ -115,13 +146,13 @@ export default function LoginPage() {
                       </div>
                     </motion.div>
                   )}
+
                 </AnimatePresence>
               </div>
 
             </CardContent>
           </Card>
         </motion.div>
-
       </div>
     </div>
   );
