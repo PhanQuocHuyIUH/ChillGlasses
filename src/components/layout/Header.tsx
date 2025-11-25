@@ -8,14 +8,14 @@ const Header = () => {
       <div className="container mx-auto flex justify-between items-center py-4 px-6">
         {/* Logo */}
         {/* <a href="/" className="flex items-center"> */}
-          <Image
-            src={logo}
-            alt="Logo Chill Glasses"
-            width={120} // Chiều rộng mặc định
-            height={60} // Chiều cao mặc định
-            priority // Tải hình ảnh ưu tiên
-            className="h-auto w-auto md:h-16" // Responsive với Tailwind
-          />
+        <Image
+          src={logo}
+          alt="Logo Chill Glasses"
+          width={120} // Chiều rộng mặc định
+          height={60} // Chiều cao mặc định
+          priority // Tải hình ảnh ưu tiên
+          className="h-auto w-auto md:h-16" // Responsive với Tailwind
+        />
         {/* </a> */}
         <nav>
           <ul className="hidden md:flex space-x-6">
