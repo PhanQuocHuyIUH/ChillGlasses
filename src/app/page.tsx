@@ -1,4 +1,3 @@
-
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import Image from "next/image"; // Import Image từ next/image
