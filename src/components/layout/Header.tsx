@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FaSearch, FaShoppingCart, FaUser } from "react-icons/fa";
+import { FaSearch, FaShoppingCart, FaUserCircle } from "react-icons/fa";
 import Image from "next/image";
 import Link from "next/link";
 import logo from "../../../public/images/logo_chill_glasses.jpg";
@@ -17,6 +17,7 @@ const Header = () => {
   const [sort, setSort] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // Track login state
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({
@@ -90,7 +91,7 @@ const Header = () => {
           </ul>
         </nav>
 
-        {/* Search bar, cart, and login icons */}
+        {/* Search bar, cart, and login/user icons */}
         <div className="flex items-center space-x-4">
           {/* Search bar */}
           <div className="flex items-center border border-gray-300 rounded-md px-2 py-1">
@@ -113,11 +114,23 @@ const Header = () => {
           <button className="text-gray-500 hover:text-black">
             <FaShoppingCart size={20} />
           </button>
-          {/* Login icon */}
-          <button className="text-gray-500 hover:text-black flex items-center">
-            <FaUser size={20} className="mr-2" />
-            <span className="hidden md:inline">Đăng nhập</span>
-          </button>
+          {/* Login/User icon */}
+          {isLoggedIn ? (
+            <button className="text-gray-500 hover:text-black flex items-center">
+              <FaUserCircle size={24} className="mr-2" />
+              <span className="hidden md:inline">Tài khoản</span>
+            </button>
+          ) : (
+            <Link href="/login">
+              <button
+                className="text-gray-500 hover:text-black flex items-center"
+                onClick={() => setIsLoggedIn(true)} // Simulate login
+              >
+                <FaUserCircle size={20} className="mr-2" />
+                <span className="hidden md:inline">Đăng nhập</span>
+              </button>
+            </Link>
+          )}
         </div>
       </div>
 

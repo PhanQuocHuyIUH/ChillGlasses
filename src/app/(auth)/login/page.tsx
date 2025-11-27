@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { FcGoogle } from "react-icons/fc";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function LoginPage() {
   const [step, setStep] = useState(1);
@@ -27,11 +28,12 @@ export default function LoginPage() {
     <div className="w-full h-screen flex items-center justify-center bg-amber-50 p-4">
       <div className="flex w-full max-w-4xl bg-white rounded-3xl overflow-hidden">
         
-        <div className="hidden md:flex w-1/2 bg-gray-100 items-center justify-center p-6">
-          <img
+          <Image
             src="/images/matkinh.jpg"
             alt="Login illustration"
             className="rounded-2xl w-full h-auto object-cover"
+            width={500}
+            height={500}
           />
         </div>
 
@@ -131,11 +133,12 @@ export default function LoginPage() {
                         type="text"
                         placeholder="Nhập mã OTP"
                         className="w-full"
-                      />
+                    />
+                    <Link href="/">
                       <Button className="w-full h-12 text-base font-medium bg-blue-600 text-white hover:bg-blue-700 cursor-pointer">
                         Xác minh
                       </Button>
-
+                    </Link>  
                       <div className="text-center mt-2">
                         <button
                           className="text-sm text-blue-600 hover:underline font-medium cursor-pointer"
@@ -154,6 +157,5 @@ export default function LoginPage() {
           </Card>
         </motion.div>
       </div>
-    </div>
   );
 }
