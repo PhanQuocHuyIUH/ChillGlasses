@@ -2,9 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  devIndicators: false,
+  // devIndicators: false,
   // images: {
-  //   domains: ["localhost", "your-backend-domain.com"],
+  //   domains: [], // Thêm các domain được phép
   // },
   // env: {
   //   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,

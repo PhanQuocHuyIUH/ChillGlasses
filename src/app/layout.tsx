@@ -15,7 +15,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="flex w-full flex-col items-center">
         <div className="relative flex w-full flex-col items-center">
-          <main className="w-full overflow-hidden">{children}</main>
+          <main className="w-full overflow-hidden pt-16 pb-16">{children}</main>
         </div>
       </body>
     </html>
