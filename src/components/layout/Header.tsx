@@ -111,9 +111,10 @@ const Header = () => {
             </button>
           </div>
           {/* Shopping cart icon */}
-          <button className="text-gray-500 hover:text-black">
+          <Link href="/cart" className="text-gray-500 hover:text-black">
             <FaShoppingCart size={20} />
-          </button>
+          </Link>
+
           {/* Login/User icon */}
           {isLoggedIn ? (
             <button className="text-gray-500 hover:text-black flex items-center">
