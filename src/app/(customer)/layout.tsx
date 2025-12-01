@@ -5,7 +5,6 @@ const layout = ({
   children
 }: {
   children: React.ReactNode;
-  params: { lang: string };
 }) => {
   return (
     <>
