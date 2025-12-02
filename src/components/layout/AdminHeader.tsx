@@ -15,7 +15,7 @@ const AdminHeader = () => {
   };
 
   return (
-    <div className="bg-cyan-900 shadow fixed top-0 w-full flex items-center justify-end px-6 py-4 border-b border-gray-300">
+    <div className="bg-cyan-900 shadow fixed top-0 w-screen flex items-center justify-end px-6 py-4 border-b border-gray-300">
       {/* Admin Name, Avatar, and Dropdown Menu */}
       <div
         className="relative flex items-center gap-6 text-center"
