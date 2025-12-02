@@ -10,7 +10,7 @@ const DashBoard = () => {
     { name: "Danh mục", path: "/admin_categories" },
     { name: "Đơn hàng", path: "/admin_orders" },
     { name: "Khách hàng", path: "/admin_customers" },
-    { name: "Đánh giá", path: "/admin_rating" },
+    { name: "Đánh giá", path: "/admin_ratings" },
     { name: "Tài khoản", path: "/admin_accounts" },
   ];
 
