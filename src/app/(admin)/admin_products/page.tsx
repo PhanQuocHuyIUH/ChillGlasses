@@ -79,15 +79,15 @@ const AdminProductsPage = () => {
   return (
     <div>
       <AdminHeader />
-      <div className="p-8 ml-80">
-        <h1 className="text-3xl font-bold mb-8 mt-5">Quản Lý Sản Phẩm</h1>
+      <div className="p-8 w-screen">
+        <h1 className="text-3xl font-bold mb-8 mt-5 text-center">Quản Lý Sản Phẩm</h1>
         <button
           onClick={handleAddProduct}
           className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 mb-6"
         >
           Thêm sản phẩm mới
         </button>
-        <table className="w-full bg-white shadow-md rounded-lg overflow-hidden">
+        <table className="w-screen bg-white shadow-md rounded-lg overflow-hidden">
           <thead className="bg-gray-200">
             <tr>
               <th className="text-left px-4 py-2">Tên sản phẩm</th>
@@ -128,8 +128,8 @@ const AdminProductsPage = () => {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center" aria-hidden={!showModal}>
-          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center" aria-hidden={!showModal}>
+          <div className="bg-white p-6 rounded-lg shadow-lg w-lg">
             <h2 className="text-xl font-bold mb-4">
               {currentProduct.id ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm mới"}
             </h2>
