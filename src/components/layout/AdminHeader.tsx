@@ -1,41 +1,41 @@
 "use client";
 
-import Image from "next/image"; // Import Image from next/image
-import { useRouter } from "next/navigation"; // Correct import path for useRouter in Next.js 13
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const AdminHeader = () => {
   const router = useRouter();
-  const [showDropdown, setShowDropdown] = useState(false); // State to control dropdown visibility
+  const [showDropdown, setShowDropdown] = useState(false);
 
-  // Logout handler
   const handleLogout = () => {
     alert("Đăng xuất thành công!");
-    router.push("/login"); // Redirect to the login page
+    router.push("/login");
   };
 
   return (
-    <div className="bg-cyan-900 shadow fixed top-0 w-screen flex items-center justify-end px-6 py-4 border-b border-gray-300">
-      {/* Admin Name, Avatar, and Dropdown Menu */}
+    <header className="bg-cyan-900 shadow fixed top-0 left-0 right-0 w-full flex items-center justify-end px-6 py-4 border-b border-gray-300 z-50">
+      {/* Admin Avatar + Name + Dropdown */}
       <div
-        className="relative flex items-center gap-6 text-center"
-        onMouseEnter={() => setShowDropdown(true)} // Show dropdown on hover
-        onMouseLeave={() => setShowDropdown(false)} // Hide dropdown when hover ends
+        className="relative flex items-center gap-4 text-center"
+        onMouseEnter={() => setShowDropdown(true)}
+        onMouseLeave={() => setShowDropdown(false)}
       >
         <Image
           src="/images/avatar.png"
           alt="Admin Avatar"
-          width={90}
-          height={90}
+          width={55}
+          height={55}
           className="rounded-full cursor-pointer"
         />
+
         <span className="font-bold text-lg text-white">Phan Quoc Huy</span>
 
-        {/* Dropdown Menu */}
+        {/* Dropdown */}
         {showDropdown && (
-          <div className="absolute top-20 right-0 bg-white border border-gray-300 rounded-lg shadow-lg w-48">
+          <div className="absolute top-16 right-0 bg-white border border-gray-300 rounded-lg shadow-lg w-48 z-50">
             <button
-              onClick={() => router.push("/profile")} // Navigate to profile page
+              onClick={() => router.push("/profile")}
               className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
             >
               My Profile
@@ -49,7 +49,7 @@ const AdminHeader = () => {
           </div>
         )}
       </div>
-    </div>
+    </header>
   );
 };
 
