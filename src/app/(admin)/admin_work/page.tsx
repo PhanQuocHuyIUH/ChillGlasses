@@ -5,12 +5,13 @@ import Link from "next/link"; // Import Link from next/link
 
 const DashBoard = () => {
   const sections = [
-    { name: "Dashboard", path: "/dashboard" },
-    { name: "Sản phẩm", path: "/product" },
-    { name: "Danh mục", path: "/category" },
-    { name: "Đơn hàng", path: "/order" },
-    { name: "Khách hàng", path: "/customers" },
-    { name: "Đánh giá", path: "/rating" },
+    { name: "Dashboard", path: "/admin_dashboard" },
+    { name: "Sản phẩm", path: "/admin_products" },
+    { name: "Danh mục", path: "/admin_categories" },
+    { name: "Đơn hàng", path: "/admin_orders" },
+    { name: "Khách hàng", path: "/admin_customers" },
+    { name: "Đánh giá", path: "/admin_rating" },
+    { name: "Tài khoản", path: "/admin_accounts" },
   ];
 
   return (
