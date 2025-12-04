@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FaSearch, FaShoppingCart, FaUserCircle } from "react-icons/fa";
 import Image from "next/image";
 import Link from "next/link";
@@ -17,7 +17,12 @@ const Header = () => {
   const [sort, setSort] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [showFilters, setShowFilters] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // Track login state
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) setIsLoggedIn(true);
+  }, []);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({
@@ -116,15 +121,17 @@ const Header = () => {
           </button>
           {/* Login/User icon */}
           {isLoggedIn ? (
-            <button className="text-gray-500 hover:text-black flex items-center">
-              <FaUserCircle size={24} className="mr-2" />
-              <span className="hidden md:inline">Tài khoản</span>
-            </button>
+            <Link href="/profile">
+              <button className="text-gray-500 hover:text-black flex items-center">
+                <FaUserCircle size={24} className="mr-2" />
+                <span className="hidden md:inline">Tài khoản</span>
+              </button>
+            </Link>
+            
           ) : (
             <Link href="/login">
               <button
                 className="text-gray-500 hover:text-black flex items-center"
-                onClick={() => setIsLoggedIn(true)} // Simulate login
               >
                 <FaUserCircle size={20} className="mr-2" />
                 <span className="hidden md:inline">Đăng nhập</span>
