@@ -15,13 +15,55 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
       setError("Vui lòng nhập đầy đủ thông tin");
       return;
     }
-    setError("");
-    setStep(2);
+
+    try {
+      const res = await fetch("http://localhost:8080/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: username,
+          password: password,
+        }),
+      });
+
+      if (!res.ok) {
+        const errMsg = await res.text();
+        setError(errMsg || "Đăng nhập thất bại");
+        return;
+      }
+
+      const token = await res.text();
+
+      localStorage.setItem("token", token);
+
+      const resMe = await fetch("http://localhost:8080/api/auth/me", {
+        headers: {
+          Authorization: "Bearer " + token,
+        },
+      });
+
+      if (!resMe.ok) {
+        setError("Không thể lấy thông tin người dùng");
+        return;
+      }
+
+      const me = await resMe.json();
+
+      if (me.role === "ADMIN") {
+        window.location.href = "/admin_accounts";
+      } else {
+        window.location.href = "/";
+      }
+
+    } catch (err) {
+      console.error(err);
+      setError("Không thể kết nối server");
+    }
   };
 
   return (

@@ -110,6 +110,41 @@ export default function RegisterPage() {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+  const handleSubmit = async () => {
+    if (!validateStep4()) return;
+
+    try {
+      const res = await fetch("http://localhost:8080/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          day: Number(day),
+          month: Number(month),
+          year: Number(year),
+          gender,
+          email,
+          password,
+          phone,
+          address,
+          recoveryEmail,
+        }),
+      });
+
+      if (!res.ok) {
+        const msg = await res.text();
+        alert("Lỗi: " + msg);
+        return;
+      }
+
+      setStep(5);
+
+    } catch (err) {
+      console.error(err);
+      alert("Không thể kết nối server");
+    }
+  };
+
 
   return (
     <div className="w-full h-screen flex items-center justify-center bg-amber-50 p-4">
@@ -432,7 +467,7 @@ export default function RegisterPage() {
                         Trở lại
                       </button>
                       <Button
-                        onClick={() => validateStep4() && next()}
+                        onClick={handleSubmit}
                         className="h-12 bg-blue-600 text-white"
                       >
                         Hoàn tất

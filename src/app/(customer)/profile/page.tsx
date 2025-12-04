@@ -1,72 +1,132 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 
 const UserProfile = () => {
-  const [fullName, setFullName] = useState("John Doe");
-  const [phoneNumber, setPhoneNumber] = useState("123-456-7890");
-  const [address, setAddress] = useState("123 Main St, City, Country");
-  const [email] = useState("johndoe@example.com"); // Read-only
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [avatar, setAvatar] = useState("/images/avatar.png"); // Default avatar
-  const [passwordChanged, setPasswordChanged] = useState(false); // State for success message
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const [error, setError] = useState("");
 
-  // Separate states for toggling visibility of each password field
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  // Form fields
+  const [fullName, setFullName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [address, setAddress] = useState("");
+  const [email, setEmail] = useState("");
 
-  const handleSaveProfile = () => {
-    console.log("Profile saved:", { fullName, phoneNumber, address });
+  const [gender, setGender] = useState("");
+  const [birthday, setBirthday] = useState({ day: "", month: "", year: "" });
+  const [recoveryEmail, setRecoveryEmail] = useState("");
+
+  const [avatar, setAvatar] = useState("/images/avatar.png");
+  const daysInMonth = (month: string | number, year: string | number) => {
+    if (!month || !year) return 31;
+
+    return new Date(Number(year), Number(month), 0).getDate();
+  };
+  const handleLogout = () => {
+    localStorage.removeItem("token"); 
+    window.location.href = "/"; 
   };
 
-  const handleChangePassword = () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      alert("Please fill in all password fields!");
-      return;
-    }
 
-    if (newPassword !== confirmPassword) {
-      alert("New password and confirm password do not match!");
-      return;
-    }
-    console.log("Password changed:", { currentPassword, newPassword });
-    setPasswordChanged(true); // Set success message
-    setTimeout(() => setPasswordChanged(false), 3000); // Hide message after 3 seconds
-  };
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const token = localStorage.getItem("token");
 
+        if (!token) {
+          setError("No token found. Please login!");
+          setLoading(false);
+          return;
+        }
+
+        const res = await fetch("http://localhost:8080/api/auth/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!res.ok) {
+          setError("Failed to authenticate. Please login again.");
+          setLoading(false);
+          return;
+        }
+
+        const data = await res.json();
+        setUser(data);
+
+        // Gán dữ liệu vào form
+        setFullName(data.name || "");
+        setPhoneNumber(data.phone || "");
+        setAddress(data.address || "");
+        setEmail(data.email || "");
+
+        setGender(data.gender || "");
+        setBirthday({
+          day: data.day || "",
+          month: data.month || "",
+          year: data.year || "",
+        });
+
+        setRecoveryEmail(data.recoveryEmail || "");
+      } catch (error) {
+        setError("Cannot load user data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, []);
+
+  // Change avatar
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const imageUrl = URL.createObjectURL(file); // Create a temporary URL for the uploaded image
-      setAvatar(imageUrl);
+      const url = URL.createObjectURL(file);
+      setAvatar(url);
     }
   };
 
+  // Save profile
+  const handleSaveProfile = () => {
+    console.log("Saving profile", {
+      fullName,
+      phoneNumber,
+      address,
+      gender,
+      birthday,
+      recoveryEmail,
+    });
+  };
+
+  // Loading
+  if (loading) return <div className="text-center mt-10">Loading user...</div>;
+
+  // Error
+  if (error)
+    return <div className="text-center mt-10 text-red-500">{error}</div>;
+
+  // Not logged in
+  if (!user)
+    return <div className="text-center mt-10">No user data found.</div>;
+
   return (
     <div className="container mx-auto bg-white shadow-md rounded-lg p-6 mt-8 mb-30">
-      <h1 className="text-4xl font-bold mb-4 self-center text-center">USER PROFILE</h1>
+      <h1 className="text-4xl font-bold mb-4 text-center">USER PROFILE</h1>
 
       {/* Avatar */}
       <div className="flex items-center mb-6">
         <Image
           src={avatar}
-          alt="User Avatar"
+          alt="Avatar"
           width={120}
           height={120}
           className="rounded-full object-cover mr-4 border border-black"
         />
-        <label className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer">
+
+        <label className="px-4 py-2 bg-blue-500 text-white rounded cursor-pointer hover:bg-blue-600">
           Change Avatar
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleAvatarChange}
-          />
+          <input type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} />
         </label>
       </div>
 
@@ -78,6 +138,7 @@ const UserProfile = () => {
         }}
         className="space-y-4"
       >
+        {/* NAME */}
         <div>
           <label className="block text-sm font-medium">Full Name</label>
           <input
@@ -85,10 +146,10 @@ const UserProfile = () => {
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             className="w-full border border-gray-300 rounded px-3 py-2"
-            title="Full Name"
-            placeholder="Enter your full name"
           />
         </div>
+
+        {/* PHONE */}
         <div>
           <label className="block text-sm font-medium">Phone Number</label>
           <input
@@ -96,10 +157,10 @@ const UserProfile = () => {
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value)}
             className="w-full border border-gray-300 rounded px-3 py-2"
-            title="Phone Number"
-            placeholder="Enter your phone number"
           />
         </div>
+
+        {/* ADDRESS */}
         <div>
           <label className="block text-sm font-medium">Address</label>
           <input
@@ -107,106 +168,111 @@ const UserProfile = () => {
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             className="w-full border border-gray-300 rounded px-3 py-2"
-            title="Address"
-            placeholder="Enter your address"
           />
         </div>
+
+        {/* GENDER */}
         <div>
-          <label className="block text-sm font-medium">Email</label>
+          <label className="block text-sm font-medium">Gender</label>
+          <select
+            value={gender}
+            onChange={(e) => setGender(e.target.value)}
+            className="w-full border rounded px-3 py-2"
+          >
+            <option value="">Select gender</option>
+            <option value="Nam">Male</option>
+            <option value="Nữ">Female</option>
+            <option value="Khác">Other</option>
+          </select>
+        </div>
+        {/* BIRTHDAY */}
+<div>
+  <label className="block text-sm font-medium">Birthday</label>
+  <div className="flex gap-2">
+
+    {/* DAY */}
+    <select
+      value={birthday.day}
+      onChange={(e) =>
+        setBirthday({ ...birthday, day: e.target.value })
+      }
+      className="w-1/3 border px-2 py-2 rounded"
+    >
+      <option value="">Day</option>
+      {Array.from({ length: daysInMonth(birthday.month, birthday.year) }, (_, i) => i + 1).map(
+        (d) => (
+          <option key={d} value={d}>{d}</option>
+        )
+      )}
+    </select>
+
+    {/* MONTH */}
+    <select
+      value={birthday.month}
+      onChange={(e) =>
+        setBirthday({ ...birthday, month: e.target.value })
+      }
+      className="w-1/3 border px-2 py-2 rounded"
+    >
+      <option value="">Month</option>
+      {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+        <option key={m} value={m}>{m}</option>
+      ))}
+    </select>
+
+    {/* YEAR */}
+    <select
+      value={birthday.year}
+      onChange={(e) =>
+        setBirthday({ ...birthday, year: e.target.value })
+      }
+      className="w-1/3 border px-2 py-2 rounded"
+    >
+      <option value="">Year</option>
+      {Array.from({ length: 100 }, (_, i) => 2025 - i).map((y) => (
+        <option key={y} value={y}>{y}</option>
+      ))}
+    </select>
+
+  </div>
+</div>
+
+
+        {/* RECOVERY EMAIL */}
+        <div>
+          <label className="block text-sm font-medium">Recovery Email</label>
+          <input
+            type="email"
+            value={recoveryEmail}
+            onChange={(e) => setRecoveryEmail(e.target.value)}
+            className="w-full border px-3 py-2 rounded"
+          />
+        </div>
+
+        {/* EMAIL READONLY */}
+        <div>
+          <label className="block text-sm font-medium">Email (read only)</label>
           <input
             type="email"
             value={email}
             readOnly
-            title="Email"
-            className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100 cursor-not-allowed"
+            className="w-full bg-gray-100 border px-3 py-2 rounded cursor-not-allowed"
           />
         </div>
-        <button
-          type="submit"
-          className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-        >
-          Save Profile
-        </button>
-      </form>
 
-      {/* Change Password */}
-      <div className="mt-8">
-        <h2 className="text-xl font-bold mb-4">Change Password</h2>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleChangePassword();
-          }}
-          className="space-y-4"
-        >
-          <div className="relative">
-            <label className="block text-sm font-medium">Current Password</label>
-            <input
-              type={showCurrentPassword ? "text" : "password"}
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2"
-              title="Current Password"
-              placeholder="Enter your current password"
-            />
-            <button
-              type="button"
-              onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-            >
-              {showCurrentPassword ? "Hide" : "Show"}
-            </button>
-          </div>
-          <div className="relative">
-            <label className="block text-sm font-medium">New Password</label>
-            <input
-              type={showNewPassword ? "text" : "password"}
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2"
-              title="New Password"
-              placeholder="Enter your new password"
-            />
-            <button
-              type="button"
-              onClick={() => setShowNewPassword(!showNewPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-            >
-              {showNewPassword ? "Hide" : "Show"}
-            </button>
-          </div>
-          <div className="relative">
-            <label className="block text-sm font-medium">Confirm Password</label>
-            <input
-              type={showConfirmPassword ? "text" : "password"}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2"
-              title="Confirm Password"
-              placeholder="Confirm your new password"
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-            >
-              {showConfirmPassword ? "Hide" : "Show"}
-            </button>
-          </div>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
-          >
-            Change Password
+        
+        <div className="flex justify-end mb-4">
+          <button type="submit" className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
+            Save Profile
           </button>
-        </form>
-        {/* Success Message */}
-        {passwordChanged && (
-          <div className="mt-4 text-green-500 font-medium">
-            Password changed successfully!
-          </div>
-        )}
-      </div>
+          <button
+            onClick={() => handleLogout()}
+            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+          >
+            Logout
+          </button>
+        </div>
+      </form>
     </div>
   );
 };
