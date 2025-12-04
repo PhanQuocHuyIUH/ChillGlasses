@@ -1,6 +1,7 @@
 "use client";
 
 import AdminHeader from "@/components/layout/AdminHeader";
+import SideBar from "@/components/layout/SideBar";
 import { useState } from "react";
 
 // npm install react-chartjs-2 chart.js
@@ -53,10 +54,11 @@ const AdminDashBoardPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen overflow-auto bg-gray-100">
       <AdminHeader />
-      <div className="flex justify-center p-10 md:ml-80">
-        <div className="bg-white shadow-md rounded-lg w-full max-w-6xl p-6">
+      <SideBar />
+      <div className="ml-100 p-8"> {/* Added margin-left to prevent overlap */}
+        <div className="bg-white shadow-md rounded-lg w-full max-w-6xl over mx-auto p-6">
           <h1 className="text-2xl font-bold mb-6 text-center">Admin Dashboard</h1>
 
           {/* Cards */}
@@ -94,7 +96,7 @@ const AdminDashBoardPage = () => {
           </div>
 
           {/* Best-Selling Products */}
-          <div className="bg-gray-50 shadow-md rounded-lg p-4 pb-100">
+          <div className="bg-gray-50 shadow-md rounded-lg p-4">
             <h2 className="text-lg font-bold mb-3">Sản phẩm bán chạy</h2>
             <ul className="space-y-3">
               {dashboardData.bestSellingProducts.map((product, index) => (

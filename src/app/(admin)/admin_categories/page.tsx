@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import AdminHeader from "@/components/layout/AdminHeader";
+import SideBar from "@/components/layout/SideBar";
 
 const CategoryPage = () => {
   const [categories, setCategories] = useState([
@@ -58,88 +59,87 @@ const CategoryPage = () => {
   return (
     <div>
       <AdminHeader />
+      <div className="flex">
+        <SideBar /> {/* Sidebar with fixed width */}
+        <div className="flex-1 pt-20 min-h-screen ml-90 p-8 bg-gray-100">
+          <h1 className="text-3xl font-bold mb-6 text-center">Quản lý danh mục</h1>
 
-      {/* FIX CHE HEADER */}
-      <div className="pt-20 min-h-screen w-screen p-8 bg-gray-100">
+          {/* FORM */}
+          <div className="bg-white p-6 rounded shadow mb-8 max-w-3xl mx-auto">
+            <h2 className="text-xl font-semibold mb-4 text-center">
+              {isEditing ? "Chỉnh sửa danh mục" : "Thêm danh mục"}
+            </h2>
 
-        <h1 className="text-3xl font-bold mb-6 text-center">Quản lý danh mục</h1>
+            <div className="flex flex-col md:flex-row gap-4 justify-center">
+              <input
+                type="text"
+                name="name"
+                value={form.name}
+                onChange={handleInputChange}
+                placeholder="Tên danh mục"
+                className="border p-2 rounded w-full"
+              />
+              <input
+                type="text"
+                name="description"
+                value={form.description}
+                onChange={handleInputChange}
+                placeholder="Mô tả"
+                className="border p-2 rounded w-full"
+              />
 
-        {/* FORM */}
-        <div className="bg-white p-6 rounded shadow mb-8 max-w-3xl mx-auto">
-          <h2 className="text-xl font-semibold mb-4 text-center">
-            {isEditing ? "Chỉnh sửa danh mục" : "Thêm danh mục"}
-          </h2>
-
-          <div className="flex flex-col md:flex-row gap-4 justify-center">
-            <input
-              type="text"
-              name="name"
-              value={form.name}
-              onChange={handleInputChange}
-              placeholder="Tên danh mục"
-              className="border p-2 rounded w-full"
-            />
-            <input
-              type="text"
-              name="description"
-              value={form.description}
-              onChange={handleInputChange}
-              placeholder="Mô tả"
-              className="border p-2 rounded w-full"
-            />
-
-            {isEditing ? (
-              <button
-                onClick={handleUpdateCategory}
-                className="bg-blue-600 text-white px-4 py-2 rounded"
-              >
-                Cập nhật
-              </button>
-            ) : (
-              <button
-                onClick={handleAddCategory}
-                className="bg-green-600 text-white px-4 py-2 rounded"
-              >
-                Thêm
-              </button>
-            )}
+              {isEditing ? (
+                <button
+                  onClick={handleUpdateCategory}
+                  className="bg-blue-600 text-white px-4 py-2 rounded"
+                >
+                  Cập nhật
+                </button>
+              ) : (
+                <button
+                  onClick={handleAddCategory}
+                  className="bg-green-600 text-white px-4 py-2 rounded"
+                >
+                  Thêm
+                </button>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* TABLE */}
-        <table className="w-full bg-white rounded shadow">
-          <thead>
-            <tr className="bg-gray-200">
-              <th className="p-4 text-left w-1/4">Tên</th>
-              <th className="p-4 text-left w-2/4">Mô tả</th>
-              <th className="p-4 text-center w-1/4">Hành động</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {categories.map((category) => (
-              <tr key={category.id} className="border-b">
-                <td className="p-4">{category.name}</td>
-                <td className="p-4">{category.description}</td>
-                <td className="p-4 text-center">
-                  <button
-                    onClick={() => handleEditCategory(category)}
-                    className="bg-yellow-500 text-white px-3 py-1 rounded mr-2"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDeleteCategory(category.id)}
-                    className="bg-red-600 text-white px-3 py-1 rounded"
-                  >
-                    Delete
-                  </button>
-                </td>
+          {/* TABLE */}
+          <table className="w-full bg-white rounded shadow border border-gray-300">
+            <thead className="bg-gray-200 border-b border-gray-300">
+              <tr>
+                <th className="p-4 text-left border-r border-gray-300">Tên</th>
+                <th className="p-4 text-left border-r border-gray-300">Mô tả</th>
+                <th className="p-4 text-center">Hành động</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
 
+            <tbody className="divide-y divide-gray-300">
+              {categories.map((category) => (
+                <tr key={category.id} className="hover:bg-gray-100">
+                  <td className="p-4 border-r border-gray-300">{category.name}</td>
+                  <td className="p-4 border-r border-gray-300">{category.description}</td>
+                  <td className="p-4 text-center">
+                    <button
+                      onClick={() => handleEditCategory(category)}
+                      className="bg-yellow-500 text-white px-3 py-1 rounded mr-2 hover:bg-yellow-600"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCategory(category.id)}
+                      className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
