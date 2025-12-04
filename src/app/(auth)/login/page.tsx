@@ -25,26 +25,21 @@ export default function LoginPage() {
       const res = await fetch("http://localhost:8080/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: username,
-          password: password,
-        }),
+        body: JSON.stringify({ email: username, password }),
       });
 
       if (!res.ok) {
-        const errMsg = await res.text();
-        setError(errMsg || "Đăng nhập thất bại");
+        const errData = await res.json();
+        setError(errData.message || "Đăng nhập thất bại");
         return;
       }
 
-      const token = await res.text();
-
+      const data = await res.json();
+      const token = data.data.accessToken;
       localStorage.setItem("token", token);
 
-      const resMe = await fetch("http://localhost:8080/api/auth/me", {
-        headers: {
-          Authorization: "Bearer " + token,
-        },
+      const resMe = await fetch("http://localhost:8080/api/user/profile", {
+        headers: { Authorization: "Bearer " + token }
       });
 
       if (!resMe.ok) {
@@ -52,19 +47,20 @@ export default function LoginPage() {
         return;
       }
 
-      const me = await resMe.json();
+      const meData = await resMe.json();
+      const me = meData.data; // vì ApiResponse có data
 
       if (me.role === "ADMIN") {
         window.location.href = "/admin_accounts";
       } else {
         window.location.href = "/";
       }
-
     } catch (err) {
       console.error(err);
       setError("Không thể kết nối server");
     }
   };
+
 
   return (
     <div className="w-full h-screen flex items-center justify-center bg-amber-50 p-4">
