@@ -43,7 +43,11 @@ public class SecurityConfig {
                 .sessionManagement(sess ->
                         sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/register", "/api/auth/login").permitAll()
+                        .requestMatchers(
+                                "/api/auth/register",
+                                "/api/auth/login"
+                        ).permitAll()
+                        .requestMatchers("/uploads/avatars/**").permitAll() // ✅ cho phép public
                         .requestMatchers("/api/auth/me").authenticated()
                         .anyRequest().authenticated()
                 );
@@ -52,6 +56,7 @@ public class SecurityConfig {
 
         return http.build();
     }
+
 
 
     @Bean
