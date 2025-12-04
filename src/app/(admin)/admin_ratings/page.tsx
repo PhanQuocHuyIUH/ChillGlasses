@@ -1,6 +1,7 @@
 "use client";
 
 import AdminHeader from "@/components/layout/AdminHeader";
+import SideBar from "@/components/layout/SideBar";
 import { useState } from "react";
 
 // Mock data for reviews (can be fetched from the ProductDetailPage)
@@ -69,68 +70,71 @@ const RatingPage = () => {
   };
 
   return (
-    <div>
+    <div className="min-h-screen bg-gray-100">
       <AdminHeader />
-      <div className="p-8 bg-gray-100 min-h-screen">
-        <h1 className="text-3xl font-bold mb-8 text-center">Quản Lý Đánh Giá</h1>
-        <table className="w-screen bg-white shadow-md rounded-lg overflow-hidden mr-20">
-          <thead className="bg-gray-200">
-            <tr>
-              <th className="text-left px-4 py-2">Sản phẩm</th>
-              <th className="text-left px-4 py-2">Người dùng</th>
-              <th className="text-left px-4 py-2">Nội dung</th>
-              <th className="text-left px-4 py-2">Số sao</th>
-              <th className="text-left px-4 py-2">Trạng thái</th>
-              <th className="text-center px-4 py-2">Hành động</th>
-            </tr>
-          </thead>
-          <tbody>
-            {reviews.map((review, index) => (
-              <tr
-                key={index}
-                className={`border-t ${
-                  review.status === "pending" ? "opacity-50" : ""
-                }`}
-              >
-                <td className="px-4 py-2">{review.product}</td>
-                <td className="px-4 py-2">{review.user}</td>
-                <td className="px-4 py-2">{review.content}</td>
-                <td className="px-4 py-2">{review.rating} ⭐</td>
-                <td className="px-4 py-2">
-                  {review.status === "approved"
-                    ? "Đã duyệt"
-                    : review.status === "pending"
-                    ? "Chờ duyệt"
-                    : "Đã ẩn"}
-                </td>
-                <td className="px-4 py-2 text-center">
-                  {review.status === "pending" && (
-                    <button
-                      onClick={() => handleApprove(index)}
-                      className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 mr-2"
-                    >
-                      Duyệt
-                    </button>
-                  )}
-                  {review.status !== "hidden" && (
-                    <button
-                      onClick={() => handleHide(index)}
-                      className="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 mr-2"
-                    >
-                      Ẩn
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleDelete(index)}
-                    className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
-                  >
-                    Xóa
-                  </button>
-                </td>
+      <div className="flex">
+        <SideBar /> {/* Sidebar with fixed width */}
+        <div className="flex-1 ml-64 p-8"> {/* Adjusted to take remaining space */}
+          <h1 className="text-4xl font-bold mb-8 text-center">Quản Lý Đánh Giá</h1>
+          <table className="w-full bg-white shadow-md rounded-lg border border-gray-300">
+            <thead className="bg-gray-200 border-b border-gray-300">
+              <tr>
+                <th className="text-left px-4 py-2 text-lg">Sản phẩm</th>
+                <th className="text-left px-4 py-2 text-lg">Người dùng</th>
+                <th className="text-left px-4 py-2 text-lg">Nội dung</th>
+                <th className="text-left px-4 py-2 text-lg">Số sao</th>
+                <th className="text-left px-4 py-2 text-lg">Trạng thái</th>
+                <th className="text-center px-4 py-2 text-lg">Hành động</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-300">
+              {reviews.map((review, index) => (
+                <tr
+                  key={index}
+                  className={`hover:bg-gray-100 ${
+                    review.status === "pending" ? "opacity-50" : ""
+                  }`}
+                >
+                  <td className="px-4 py-2">{review.product}</td>
+                  <td className="px-4 py-2">{review.user}</td>
+                  <td className="px-4 py-2">{review.content}</td>
+                  <td className="px-4 py-2">{review.rating} ⭐</td>
+                  <td className="px-4 py-2">
+                    {review.status === "approved"
+                      ? "Đã duyệt"
+                      : review.status === "pending"
+                      ? "Chờ duyệt"
+                      : "Đã ẩn"}
+                  </td>
+                  <td className="px-4 py-2 text-center">
+                    {review.status === "pending" && (
+                      <button
+                        onClick={() => handleApprove(index)}
+                        className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 mr-2"
+                      >
+                        Duyệt
+                      </button>
+                    )}
+                    {review.status !== "hidden" && (
+                      <button
+                        onClick={() => handleHide(index)}
+                        className="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 mr-2"
+                      >
+                        Ẩn
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDelete(index)}
+                      className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
+                    >
+                      Xóa
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

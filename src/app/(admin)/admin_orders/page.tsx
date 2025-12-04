@@ -1,6 +1,7 @@
 "use client";
 
 import AdminHeader from "@/components/layout/AdminHeader";
+import SideBar from "@/components/layout/SideBar";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -33,49 +34,52 @@ const OrderPage = () => {
   };
 
   return (
-    <div>
+    <div className="min-h-screen bg-gray-100">
       <AdminHeader />
-      <div className="p-8 bg-gray-100 min-h-screen">
-        <h1 className="text-3xl font-bold mb-8 text-center">Quản Lý Đơn Hàng</h1>
-        <table className="w-screen bg-white shadow-md rounded-lg overflow-hidden">
-          <thead className="bg-gray-200">
-            <tr>
-              <th className="text-left px-4 py-2">Mã đơn</th>
-              <th className="text-left px-4 py-2">Khách hàng</th>
-              <th className="text-left px-4 py-2">Ngày đặt</th>
-              <th className="text-left px-4 py-2">Tổng tiền</th>
-              <th className="text-left px-4 py-2">Trạng thái</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.map((order) => (
-              <tr
-                key={order.id}
-                className="border-t hover:bg-gray-100 cursor-pointer"
-                onClick={() => handleRowClick(order.id)}
-              >
-                <td className="px-4 py-2">{order.id}</td>
-                <td className="px-4 py-2">{order.customer}</td>
-                <td className="px-4 py-2">{order.orderDate}</td>
-                <td className="px-4 py-2">{order.total}</td>
-                <td className="px-4 py-2">
-                  <select
-                    value={order.status}
-                    onChange={(e) => {
-                      e.stopPropagation(); // Prevent row click when changing status
-                      handleStatusChange(order.id, e.target.value);
-                    }}
-                    className="border rounded px-2 py-1"
-                  >
-                    <option value="Đang xử lý">Đang xử lý</option>
-                    <option value="Hoàn thành">Hoàn thành</option>
-                    <option value="Đã hủy">Đã hủy</option>
-                  </select>
-                </td>
+      <div className="flex">
+        <SideBar /> {/* Sidebar with fixed width */}
+        <div className="flex-1 ml-100 p-8"> {/* Adjusted to take remaining space */}
+          <h1 className="text-4xl font-bold mb-8 text-center">Quản Lý Đơn Hàng</h1>
+          <table className="w-full bg-white shadow-md rounded-lg border border-gray-300">
+            <thead className="bg-gray-200 border-b border-gray-300">
+              <tr>
+                <th className="text-left px-6 py-4 text-lg border-r border-gray-300">Mã đơn</th>
+                <th className="text-left px-6 py-4 text-lg border-r border-gray-300">Khách hàng</th>
+                <th className="text-left px-6 py-4 text-lg border-r border-gray-300">Ngày đặt</th>
+                <th className="text-left px-6 py-4 text-lg border-r border-gray-300">Tổng tiền</th>
+                <th className="text-left px-6 py-4 text-lg">Trạng thái</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-300">
+              {orders.map((order) => (
+                <tr
+                  key={order.id}
+                  className="hover:bg-gray-100 cursor-pointer"
+                  onClick={() => handleRowClick(order.id)}
+                >
+                  <td className="px-6 py-4 text-lg border-r border-gray-300">{order.id}</td>
+                  <td className="px-6 py-4 text-lg border-r border-gray-300">{order.customer}</td>
+                  <td className="px-6 py-4 text-lg border-r border-gray-300">{order.orderDate}</td>
+                  <td className="px-6 py-4 text-lg border-r border-gray-300">{order.total}</td>
+                  <td className="px-6 py-4 text-lg">
+                    <select
+                      value={order.status}
+                      onChange={(e) => {
+                        e.stopPropagation(); // Prevent row click when changing status
+                        handleStatusChange(order.id, e.target.value);
+                      }}
+                      className="border rounded px-2 py-1 text-lg"
+                    >
+                      <option value="Đang xử lý">Đang xử lý</option>
+                      <option value="Hoàn thành">Hoàn thành</option>
+                      <option value="Đã hủy">Đã hủy</option>
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

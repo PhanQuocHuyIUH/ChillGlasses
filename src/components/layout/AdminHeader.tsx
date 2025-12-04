@@ -13,6 +13,10 @@ const AdminHeader = () => {
     router.push("/login");
   };
 
+  const handleProfile = () => {
+    router.push("/admin_profile"); // Navigate to the admin profile page
+  };
+
   return (
     <header className="bg-cyan-900 shadow fixed top-0 left-0 right-0 w-full flex items-center justify-end px-6 py-4 border-b border-gray-300 z-50">
       {/* Admin Avatar + Name + Dropdown */}
@@ -36,6 +40,12 @@ const AdminHeader = () => {
         {/* Dropdown */}
         {showDropdown && (
           <div className="absolute top-16 right-0 bg-white border border-gray-300 rounded-lg shadow-lg w-48 z-50">
+            <button
+              onClick={handleProfile}
+              className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+            >
+              My Profile
+            </button>
             <button
               onClick={handleLogout}
               className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"

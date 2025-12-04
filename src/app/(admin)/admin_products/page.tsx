@@ -1,6 +1,7 @@
 "use client";
 
 import AdminHeader from "@/components/layout/AdminHeader";
+import SideBar from "@/components/layout/SideBar";
 import { useState } from "react";
 
 // Define the Product interface
@@ -79,6 +80,7 @@ const AdminProductsPage = () => {
   return (
     <div>
       <AdminHeader />
+      <SideBar />
       <div className="p-8 w-screen">
         <h1 className="text-3xl font-bold mb-8 mt-5 text-center">Quản Lý Sản Phẩm</h1>
         <button
@@ -87,25 +89,25 @@ const AdminProductsPage = () => {
         >
           Thêm sản phẩm mới
         </button>
-        <table className="w-screen bg-white shadow-md rounded-lg overflow-hidden">
-          <thead className="bg-gray-200">
+        <table className="w-full bg-white shadow-md rounded-lg border border-gray-300">
+          <thead className="bg-gray-200 border-b border-gray-300">
             <tr>
-              <th className="text-left px-4 py-2">Tên sản phẩm</th>
-              <th className="text-left px-4 py-2">Danh mục</th>
-              <th className="text-left px-4 py-2">Giá</th>
-              <th className="text-left px-4 py-2">Tồn kho</th>
-              <th className="text-left px-4 py-2">Trạng thái</th>
+              <th className="text-left px-4 py-2 border-r border-gray-300">Tên sản phẩm</th>
+              <th className="text-left px-4 py-2 border-r border-gray-300">Danh mục</th>
+              <th className="text-left px-4 py-2 border-r border-gray-300">Giá</th>
+              <th className="text-left px-4 py-2 border-r border-gray-300">Tồn kho</th>
+              <th className="text-left px-4 py-2 border-r border-gray-300">Trạng thái</th>
               <th className="text-center px-4 py-2">Hành động</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-gray-300">
             {products.map((product) => (
-              <tr key={product.id} className="border-t">
-                <td className="px-4 py-2">{product.name}</td>
-                <td className="px-4 py-2">{product.category}</td>
-                <td className="px-4 py-2">{product.price}</td>
-                <td className="px-4 py-2">{product.stock}</td>
-                <td className="px-4 py-2">{product.status}</td>
+              <tr key={product.id} className="hover:bg-gray-100">
+                <td className="px-4 py-2 border-r border-gray-300">{product.name}</td>
+                <td className="px-4 py-2 border-r border-gray-300">{product.category}</td>
+                <td className="px-4 py-2 border-r border-gray-300">{product.price}</td>
+                <td className="px-4 py-2 border-r border-gray-300">{product.stock}</td>
+                <td className="px-4 py-2 border-r border-gray-300">{product.status}</td>
                 <td className="px-4 py-2 text-center">
                   <button
                     onClick={() => handleEdit(product)}
@@ -129,7 +131,7 @@ const AdminProductsPage = () => {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center" aria-hidden={!showModal}>
-          <div className="bg-white p-6 rounded-lg shadow-lg w-lg">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-lg w-full">
             <h2 className="text-xl font-bold mb-4">
               {currentProduct.id ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm mới"}
             </h2>
