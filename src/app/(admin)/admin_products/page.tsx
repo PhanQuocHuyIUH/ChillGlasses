@@ -55,27 +55,58 @@ const AdminProductsPage = () => {
   };
 
   const handleSave = () => {
-    if (!currentProduct.name || !currentProduct.category || !currentProduct.price) {
-      alert("Vui lòng điền đầy đủ thông tin sản phẩm!");
+    // Kiểm tra tên sản phẩm
+    if (!currentProduct.name || currentProduct.name.trim() === "") {
+      alert("⚠ Tên sản phẩm không được để trống!");
+    return;
+    }
+
+    // Kiểm tra danh mục
+    if (!currentProduct.category || currentProduct.category.trim() === "") {
+      alert("⚠ Danh mục không được để trống!");
       return;
     }
 
+    // Kiểm tra giá (không để trống + phải chứa số)
+    if (!currentProduct.price || currentProduct.price.trim() === "") {
+      alert("⚠ Giá sản phẩm không được để trống!");
+      return;
+    }
+
+    if (!/[0-9]/.test(currentProduct.price)) {
+      alert("⚠ Giá sản phẩm phải chứa số!");
+      return;
+    }
+
+    // Kiểm tra tồn kho hợp lệ
+    if (isNaN(currentProduct.stock)) {
+      alert("⚠ Tồn kho phải là số!");
+      return;
+    }
+
+    if (currentProduct.stock < 0) {
+      alert("⚠ Tồn kho không được nhỏ hơn 0!");
+      return;
+    }
+
+
     if (currentProduct.id) {
-      // Edit existing product
+      // Update
       setProducts((prev) =>
         prev.map((product) =>
           product.id === currentProduct.id ? currentProduct : product
         )
       );
     } else {
-      // Add new product
+      // Add
       setProducts((prev) => [
         ...prev,
-        { ...currentProduct, id: Date.now() }, // Assign a unique ID
+        { ...currentProduct, id: Date.now() },
       ]);
     }
-    setShowModal(false); // Close the modal
+    setShowModal(false);
   };
+
 
   return (
     <div>
@@ -85,11 +116,11 @@ const AdminProductsPage = () => {
         <h1 className="text-3xl font-bold mb-8 mt-5 text-center">Quản Lý Sản Phẩm</h1>
         <button
           onClick={handleAddProduct}
-          className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 mb-6"
+          className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 mb-6 ml-100"
         >
           Thêm sản phẩm mới
         </button>
-        <table className="w-full bg-white shadow-md rounded-lg border border-gray-300">
+        <table className="ml-100 bg-white shadow-md rounded-lg border border-gray-300">
           <thead className="bg-gray-200 border-b border-gray-300">
             <tr>
               <th className="text-left px-4 py-2 border-r border-gray-300">Tên sản phẩm</th>
