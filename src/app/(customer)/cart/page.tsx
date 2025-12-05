@@ -133,7 +133,7 @@ const CartPage = () => {
                 ))}
               </div>
 
-              {/* Tổng tiền */}
+              {/* Tổng tiền + link lịch sử đơn hàng */}
               <div className="bg-white shadow rounded-lg p-4">
                 <h2 className="font-medium mb-3">Tổng cộng</h2>
 
@@ -152,11 +152,20 @@ const CartPage = () => {
                     Tiến hành thanh toán
                   </button>
                 </Link>
+
                 <Link
                     href="/products"
                     className="mt-2 block w-full text-center text-sm text-gray-600 hover:underline"
                 >
                   Tiếp tục mua sắm
+                </Link>
+
+                {/* Link lịch sử đơn hàng */}
+                <Link
+                    href="/orders"
+                    className="mt-2 block w-full text-center text-sm text-blue-600 hover:underline"
+                >
+                  Xem lịch sử đơn hàng
                 </Link>
               </div>
             </div>
