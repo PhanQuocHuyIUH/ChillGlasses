@@ -38,6 +38,8 @@ export default function LoginPage() {
       const token = data.data.accessToken;
       localStorage.setItem("token", token);
 
+      document.cookie = `token=${token}; path=/;`;
+
       const resMe = await fetch("http://localhost:8080/api/user/profile", {
         headers: { Authorization: "Bearer " + token }
       });
@@ -48,7 +50,9 @@ export default function LoginPage() {
       }
 
       const meData = await resMe.json();
-      const me = meData.data; // vì ApiResponse có data
+      const me = meData.data;
+
+      document.cookie = `role=${me.role}; path=/;`;
 
       if (me.role === "ADMIN") {
         window.location.href = "/admin_accounts";

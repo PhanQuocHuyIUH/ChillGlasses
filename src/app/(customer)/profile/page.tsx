@@ -27,9 +27,12 @@ const [showOldPassword, setShowOldPassword] = useState(false);
 const [showNewPassword, setShowNewPassword] = useState(false);
 
 const handleLogout = () => {
-localStorage.removeItem("token");
-window.location.href = "/";
+  localStorage.removeItem("token");
+  document.cookie = "token=; path=/; Max-Age=0;";
+  document.cookie = "role=; path=/; Max-Age=0;";
+  window.location.href = "/";
 };
+
 
 useEffect(() => {
 const fetchUser = async () => {
