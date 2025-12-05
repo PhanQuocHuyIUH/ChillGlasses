@@ -4,11 +4,33 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 
-// Mẫu dữ liệu đơn hàng
-const sampleOrders = [
+type OrderItem = {
+    id: number;
+    name: string;
+    price: number;
+    quantity: number;
+    image: string;
+};
+
+type OrderDetail = {
+    id: string;
+    code: string;
+    status: string;
+    shippingFee: number;
+    recipient: {
+        name: string;
+        phone: string;
+        address: string;
+        payment: string;
+    };
+    items: OrderItem[];
+};
+
+const sampleOrders: OrderDetail[] = [
     {
-        id: "DH001",
-        status: "Đang giao",
+        id: "1",
+        code: "CG-20241201-001",
+        status: "Chờ xác nhận",
         shippingFee: 30000,
         recipient: {
             name: "Nguyễn Văn A",
@@ -19,17 +41,87 @@ const sampleOrders = [
         items: [
             {
                 id: 1,
-                name: "Gọng Kính Đen Basic",
-                price: 350000,
+                name: "Gọng kính Chill Classic 01",
+                price: 1200000,
                 quantity: 1,
                 image: "/images/product1.jpg",
             },
             {
                 id: 2,
-                name: "Kính Râm Thời Trang",
+                name: "Kính râm Chill UV 02",
+                price: 950000,
+                quantity: 1,
+                image: "/images/product2.jpg",
+            },
+        ],
+    },
+    {
+        id: "2",
+        code: "CG-20241128-002",
+        status: "Đang giao",
+        shippingFee: 30000,
+        recipient: {
+            name: "Trần Thị B",
+            phone: "0987654321",
+            address: "456 đường XYZ, Quận 3, TPHCM",
+            payment: "Chuyển khoản",
+        },
+        items: [
+            {
+                id: 3,
+                name: "Gọng kính Basic Đen",
+                price: 350000,
+                quantity: 1,
+                image: "/images/product1.jpg",
+            },
+            {
+                id: 4,
+                name: "Kính râm Thời Trang",
                 price: 550000,
                 quantity: 2,
                 image: "/images/product2.jpg",
+            },
+        ],
+    },
+    {
+        id: "3",
+        code: "CG-20241120-003",
+        status: "Đã giao",
+        shippingFee: 30000,
+        recipient: {
+            name: "Lê Văn C",
+            phone: "0901234567",
+            address: "789 đường QWE, Quận 5, TPHCM",
+            payment: "Ví điện tử",
+        },
+        items: [
+            {
+                id: 5,
+                name: "Kính râm Polarized",
+                price: 820000,
+                quantity: 1,
+                image: "/images/product3.jpg",
+            },
+        ],
+    },
+    {
+        id: "4",
+        code: "CG-20241110-004",
+        status: "Đã hủy",
+        shippingFee: 30000,
+        recipient: {
+            name: "Phạm Thị D",
+            phone: "0912345678",
+            address: "12 đường RTY, Quận 7, TPHCM",
+            payment: "COD",
+        },
+        items: [
+            {
+                id: 6,
+                name: "Gọng kính Vuông Kim Loại",
+                price: 1100000,
+                quantity: 1,
+                image: "/images/product4.jpg",
             },
         ],
     },
@@ -43,7 +135,7 @@ const OrderDetailPage = () => {
     const params = useParams();
     const orderId = params?.id as string;
 
-    const [order, setOrder] = useState<any>(null);
+    const [order, setOrder] = useState<OrderDetail | null>(null);
 
     useEffect(() => {
         const found = sampleOrders.find((order) => order.id === orderId);
@@ -59,16 +151,17 @@ const OrderDetailPage = () => {
     }
 
     const subtotal = order.items.reduce(
-        (sum: number, item: any) => sum + item.price * item.quantity,
+        (sum, item) => sum + item.price * item.quantity,
         0
     );
-
     const total = subtotal + order.shippingFee;
 
     return (
         <div className="min-h-screen bg-gray-100 pt-24 pb-32 px-4">
             <div className="max-w-4xl mx-auto space-y-8">
-                <h1 className="text-3xl font-bold">Chi tiết đơn hàng {order.id}</h1>
+                <h1 className="text-3xl font-bold">
+                    Chi tiết đơn hàng {order.code}
+                </h1>
 
                 <div className="bg-white shadow p-6 rounded-lg">
                     <p className="font-semibold">
@@ -78,18 +171,29 @@ const OrderDetailPage = () => {
 
                 <div className="bg-white shadow p-6 rounded-lg space-y-4">
                     <h2 className="text-xl font-semibold">Thông tin giao hàng</h2>
-                    <p><strong>Họ tên:</strong> {order.recipient.name}</p>
-                    <p><strong>Số điện thoại:</strong> {order.recipient.phone}</p>
-                    <p><strong>Địa chỉ:</strong> {order.recipient.address}</p>
-                    <p><strong>Thanh toán:</strong> {order.recipient.payment}</p>
+                    <p>
+                        <strong>Họ tên:</strong> {order.recipient.name}
+                    </p>
+                    <p>
+                        <strong>Số điện thoại:</strong> {order.recipient.phone}
+                    </p>
+                    <p>
+                        <strong>Địa chỉ:</strong> {order.recipient.address}
+                    </p>
+                    <p>
+                        <strong>Thanh toán:</strong> {order.recipient.payment}
+                    </p>
                 </div>
 
                 <div className="bg-white shadow p-6 rounded-lg">
                     <h2 className="text-xl font-semibold mb-4">Sản phẩm</h2>
 
                     <div className="space-y-4">
-                        {order.items.map((item: any) => (
-                            <div key={item.id} className="flex items-center space-x-4 border-b pb-4">
+                        {order.items.map((item) => (
+                            <div
+                                key={item.id}
+                                className="flex items-center space-x-4 border-b pb-4"
+                            >
                                 <Image
                                     src={item.image}
                                     alt={item.name}
@@ -100,7 +204,7 @@ const OrderDetailPage = () => {
                                 <div className="flex-1">
                                     <p className="font-semibold">{item.name}</p>
                                     <p className="text-gray-600">
-                                        {formatPrice(item.price)} x {item.quantity}
+                                        {formatPrice(item.price)} đ x {item.quantity}
                                     </p>
                                 </div>
                                 <p className="font-bold">
