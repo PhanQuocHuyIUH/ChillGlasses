@@ -27,13 +27,17 @@ const CustomerPage = () => {
   });
 
   const [isEditing, setIsEditing] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleAddCustomer = () => {
-    if (!form.name || !form.phone || !form.address || !form.email) return;
+    if (!form.name || !form.phone || !form.address || !form.email) {
+      alert("Vui lòng điền đầy đủ thông tin khách hàng!");
+      return;
+    }
 
     setCustomers([
       ...customers,
@@ -41,11 +45,13 @@ const CustomerPage = () => {
     ]);
 
     setForm({ id: 0, name: "", phone: "", address: "", email: "" });
+    setShowModal(false);
   };
 
   const handleEditCustomer = (customer: Customer) => {
     setForm(customer);
     setIsEditing(true);
+    setShowModal(true);
   };
 
   const handleUpdateCustomer = () => {
@@ -57,6 +63,7 @@ const CustomerPage = () => {
 
     setForm({ id: 0, name: "", phone: "", address: "", email: "" });
     setIsEditing(false);
+    setShowModal(false);
   };
 
   const handleDeleteCustomer = (id: number) => {
@@ -70,61 +77,17 @@ const CustomerPage = () => {
       <div className="ml-80 p-8 bg-gray-100 min-h-screen">
         <h1 className="text-3xl font-bold mb-6 text-center">Quản Lý Khách Hàng</h1>
 
-        {/* Form */}
-        <div className="bg-white p-6 rounded shadow mb-8 max-w-3xl mx-auto">
-          <h2 className="text-xl font-semibold mb-4 text-center">
-            {isEditing ? "Chỉnh sửa khách hàng" : "Thêm khách hàng mới"}
-          </h2>
-          <div className="flex flex-col md:flex-row gap-4">
-            <input
-              type="text"
-              name="name"
-              value={form.name}
-              onChange={handleInputChange}
-              placeholder="Tên khách hàng"
-              className="border p-2 rounded w-full"
-            />
-            <input
-              type="text"
-              name="phone"
-              value={form.phone}
-              onChange={handleInputChange}
-              placeholder="Số điện thoại"
-              className="border p-2 rounded w-full"
-            />
-            <input
-              type="text"
-              name="address"
-              value={form.address}
-              onChange={handleInputChange}
-              placeholder="Địa chỉ"
-              className="border p-2 rounded w-full"
-            />
-            <input
-              type="email"
-              name="email"
-              value={form.email}
-              onChange={handleInputChange}
-              placeholder="Email"
-              className="border p-2 rounded w-full"
-            />
-            {isEditing ? (
-              <button
-                onClick={handleUpdateCustomer}
-                className="bg-blue-600 text-white px-4 py-2 rounded"
-              >
-                Cập nhật
-              </button>
-            ) : (
-              <button
-                onClick={handleAddCustomer}
-                className="bg-green-600 text-white px-4 py-2 rounded"
-              >
-                Thêm
-              </button>
-            )}
-          </div>
-        </div>
+        {/* Add Customer Button */}
+        <button
+          onClick={() => {
+            setForm({ id: 0, name: "", phone: "", address: "", email: "" });
+            setIsEditing(false);
+            setShowModal(true);
+          }}
+          className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 mb-6"
+        >
+          Thêm khách hàng mới
+        </button>
 
         {/* Table */}
         <table className="w-full bg-white shadow-md rounded-lg border border-gray-300">
@@ -163,6 +126,75 @@ const CustomerPage = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-lg w-full">
+            <h2 className="text-xl font-bold mb-4 text-center">
+              {isEditing ? "Chỉnh sửa khách hàng" : "Thêm khách hàng mới"}
+            </h2>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">Tên khách hàng</label>
+              <input
+                type="text"
+                name="name"
+                value={form.name}
+                onChange={handleInputChange}
+                className="w-full border rounded px-3 py-2"
+                placeholder="Nhập tên khách hàng"
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">Số điện thoại</label>
+              <input
+                type="text"
+                name="phone"
+                value={form.phone}
+                onChange={handleInputChange}
+                className="w-full border rounded px-3 py-2"
+                placeholder="Nhập số điện thoại"
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">Địa chỉ</label>
+              <input
+                type="text"
+                name="address"
+                value={form.address}
+                onChange={handleInputChange}
+                className="w-full border rounded px-3 py-2"
+                placeholder="Nhập địa chỉ"
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">Email</label>
+              <input
+                type="email"
+                name="email"
+                value={form.email}
+                onChange={handleInputChange}
+                className="w-full border rounded px-3 py-2"
+                placeholder="Nhập email"
+              />
+            </div>
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => setShowModal(false)}
+                className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={isEditing ? handleUpdateCustomer : handleAddCustomer}
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+              >
+                {isEditing ? "Cập nhật" : "Thêm"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
