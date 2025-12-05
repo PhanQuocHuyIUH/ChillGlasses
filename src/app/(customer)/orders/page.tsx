@@ -8,7 +8,7 @@ type OrderStatus = "PENDING" | "SHIPPING" | "COMPLETED" | "CANCELLED";
 type Order = {
     id: string;
     code: string;
-    createdAt: string; // đã format sẵn, tránh dùng toLocaleDateString để khỏi lỗi hydration
+    createdAt: string;
     total: number;
     status: OrderStatus;
 };
