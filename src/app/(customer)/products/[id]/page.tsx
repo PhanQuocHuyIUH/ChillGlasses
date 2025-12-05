@@ -19,8 +19,8 @@ const allProducts = [
     stock: 20,
     rating: 4.5,
     reviews: [
-      { name: "Nguyễn Văn A", rating: 5, comment: "Sản phẩm rất đẹp và chất lượng. Tôi rất hài lòng!" },
-      { name: "Trần Thị B", rating: 4, comment: "Sản phẩm tốt nhưng giao hàng hơi chậm." },
+      { name: "Nguyễn Văn A", rating: 5, comment: "Sản phẩm rất đẹp và chất lượng. Tôi rất hài lòng!", approved: true },
+      { name: "Trần Thị B", rating: 4, comment: "Sản phẩm tốt nhưng giao hàng hơi chậm.", approved: true },
     ],
     image: product1,
   },
@@ -33,34 +33,36 @@ const allProducts = [
     stock: 15,
     rating: 4.0,
     reviews: [
-      { name: "Lê Văn C", rating: 4, comment: "Thiết kế đẹp, nhưng hơi nặng." },
-      { name: "Hoàng Thị D", rating: 5, comment: "Rất hài lòng với sản phẩm này!" },
+      { name: "Lê Văn C", rating: 4, comment: "Thiết kế đẹp, nhưng hơi nặng.", approved: true },
+      { name: "Hoàng Thị D", rating: 5, comment: "Rất hài lòng với sản phẩm này!", approved: true },
     ],
     image: product2,
   },
   {
     id: 3,
     name: "Sản phẩm 3",
-    price: "1.000.000đ",
-    description: "Kính thời trang cao cấp, mang lại sự sang trọng và đẳng cấp.",
-    specs: "Chất liệu nhựa và kim loại, chống tia UV, thiết kế thời thượng.",
-    stock: 10,
-    rating: 5.0,
+    price: "900.000đ",
+    description: "Sản phẩm kính thời trang với thiết kế hiện đại, phù hợp với mọi lứa tuổi.",
+    specs: "Chất liệu kim loại cao cấp, chống xước, chống tia UV.",
+    stock: 15,
+    rating: 4.0,
     reviews: [
-      { name: "Phạm Văn E", rating: 5, comment: "Sản phẩm tuyệt vời, rất đáng tiền!" },
+      { name: "Lê Văn C", rating: 4, comment: "Thiết kế đẹp, nhưng hơi nặng.", approved: true },
+      { name: "Hoàng Thị D", rating: 5, comment: "Rất hài lòng với sản phẩm này!", approved: true },
     ],
     image: product3,
   },
   {
     id: 4,
     name: "Sản phẩm 4",
-    price: "1.200.000đ",
-    description: "Kính thời trang dành cho doanh nhân, thiết kế tinh tế và hiện đại.",
-    specs: "Chất liệu cao cấp, chống tia UV, chống xước.",
-    stock: 5,
-    rating: 3.5,
+    price: "1.000.000đ",
+    description: "Sản phẩm kính thời trang với thiết kế hiện đại, phù hợp với mọi lứa tuổi.",
+    specs: "Chất liệu kim loại cao cấp, chống xước, chống tia UV.",
+    stock: 15,
+    rating: 4.0,
     reviews: [
-      { name: "Nguyễn Thị F", rating: 3, comment: "Sản phẩm ổn, nhưng giá hơi cao." },
+      { name: "Lê Văn C", rating: 4, comment: "Thiết kế đẹp, nhưng hơi nặng.", approved: true },
+      { name: "Hoàng Thị D", rating: 5, comment: "Rất hài lòng với sản phẩm này!", approved: true },
     ],
     image: product4,
   },
@@ -93,7 +95,10 @@ const ProductDetailPage = () => {
   // Hàm xử lý khi gửi đánh giá
   const handleSubmitReview = () => {
     if (newReview.name && newReview.rating > 0 && newReview.comment) {
-      setReviews((prev) => [...prev, newReview]); // Thêm đánh giá mới vào danh sách
+      setReviews((prev) => [
+        ...prev,
+        { ...newReview, approved: false }, // Đánh giá mới ở trạng thái chờ duyệt
+      ]);
       setNewReview({ name: "", rating: 0, comment: "" }); // Reset form
     } else {
       alert("Vui lòng điền đầy đủ thông tin đánh giá!");
@@ -171,10 +176,18 @@ const ProductDetailPage = () => {
         <h2 className="text-2xl font-bold mb-4">Đánh giá và nhận xét</h2>
         <div className="space-y-4">
           {reviews.map((review, index) => (
-            <div key={index} className="border rounded-lg p-4 shadow">
+            <div
+              key={index}
+              className={`border rounded-lg p-4 shadow ${
+                !review.approved ? "opacity-50" : ""
+              }`}
+            >
               <h3 className="text-lg font-bold">{review.name}</h3>
               <p className="text-yellow-500">Rating: {review.rating} ⭐</p>
               <p className="text-gray-700">{review.comment}</p>
+              {!review.approved && (
+                <p className="text-red-500 italic">Chờ duyệt...</p>
+              )}
             </div>
           ))}
         </div>
@@ -189,15 +202,18 @@ const ProductDetailPage = () => {
             onChange={(e) => setNewReview({ ...newReview, name: e.target.value })}
             className="w-full mb-4 px-4 py-2 border rounded"
           />
-          <input
-            type="number"
-            placeholder="Đánh giá (1-5)"
+          <select
             value={newReview.rating}
             onChange={(e) => setNewReview({ ...newReview, rating: parseInt(e.target.value) })}
             className="w-full mb-4 px-4 py-2 border rounded"
-            min="1"
-            max="5"
-          />
+          >
+            <option value={0}>Chọn đánh giá (1-5)</option>
+            {[1, 2, 3, 4, 5].map((rating) => (
+              <option key={rating} value={rating}>
+                {rating}
+              </option>
+            ))}
+          </select>
           <textarea
             placeholder="Nhận xét của bạn"
             value={newReview.comment}

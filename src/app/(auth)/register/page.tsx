@@ -1,42 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { FaEye, FaEyeSlash, FaCheckCircle } from "react-icons/fa";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 export default function RegisterPage() {
-  function PasswordInput({
-    placeholder,
-    value,
-    onChange,
-  }: {
-    placeholder: string;
-    value: string;
-    onChange: (v: string) => void;
-  }) {
-    const [show, setShow] = useState(false);
-    return (
-      <div className="relative w-full">
-        <Input
-          type={show ? "text" : "password"}
-          placeholder={placeholder}
-          className="w-full pr-12"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        />
-        <button
-          type="button"
-          onClick={() => setShow(!show)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-        >
-          {show ? <FaEyeSlash /> : <FaEye />}
-        </button>
-      </div>
-    );
-  }
+  const [showPassword, setShowPassword] = useState(false);
+
 
   const [step, setStep] = useState(1);
 
@@ -110,6 +84,43 @@ export default function RegisterPage() {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+  const handleSubmit = async () => {
+    if (!validateStep4()) return;
+
+    try {
+      const res = await fetch("http://localhost:8080/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: name,
+          day: Number(day),
+          month: Number(month),
+          year: Number(year),
+          gender,
+          email,
+          password,
+          phone,
+          address,
+          recoveryEmail,
+          avatar: `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70) + 1}` // <-- thêm avatar ngẫu nhiên
+        })
+
+      });
+
+      if (!res.ok) {
+        const msg = await res.text();
+        alert("Lỗi: " + msg);
+        return;
+      }
+
+      setStep(5);
+
+    } catch (err) {
+      console.error(err);
+      alert("Không thể kết nối server");
+    }
+  };
+
 
   return (
     <div className="w-full h-screen flex items-center justify-center bg-amber-50 p-4">
@@ -329,10 +340,7 @@ export default function RegisterPage() {
                       <PasswordInput
                         placeholder="Mật khẩu"
                         value={password}
-                        onChange={(v) => {
-                          setPassword(v);
-                          setErrors({ ...errors, password: "" });
-                        }}
+                        onChange={setPassword}
                       />
                       {errors.password && (
                         <p className="text-red-500 text-sm">
@@ -432,7 +440,7 @@ export default function RegisterPage() {
                         Trở lại
                       </button>
                       <Button
-                        onClick={() => validateStep4() && next()}
+                        onClick={handleSubmit}
                         className="h-12 bg-blue-600 text-white"
                       >
                         Hoàn tất

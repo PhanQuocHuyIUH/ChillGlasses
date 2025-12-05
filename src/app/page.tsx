@@ -22,7 +22,7 @@ export default function Home() {
       <Header />
 
       {/* Main Content Wrapper */}
-      <main className="flex-1 w-full max-w-6xl mx-auto px-4">
+      <main className="flex-1 w-full max-w-6xl mx-auto px-4 pb-20">
         {/* Banner */}
         <section className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white py-16 text-center">
           <h1 className="text-4xl font-bold">Chào mừng đến với Chill Glasses</h1>
