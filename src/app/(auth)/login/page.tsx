@@ -8,12 +8,51 @@ import { Card, CardContent } from "@/components/ui/card";
 import { FcGoogle } from "react-icons/fc";
 import Link from "next/link";
 import Image from "next/image";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { auth, googleProvider } from "@/lib/firebaseConfig";
 
 export default function LoginPage() {
   const [step, setStep] = useState(1);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+
+  const handleGoogleLogin = async () => {
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    if (!credential?.idToken) throw new Error("No ID token");
+
+    const res = await fetch("http://localhost:8080/api/auth/google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken: credential.idToken }),
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data?.data?.accessToken) throw new Error("Google login failed");
+
+    const token = data.data.accessToken;
+    const user = data.data.user;
+    
+      localStorage.setItem("token", token);
+    
+
+    document.cookie = `token=${token}; path=/;`;
+    document.cookie = `role=${user.role}; path=/;`;
+
+    if (user.role === "ADMIN") {
+      window.location.href = "/admin_accounts";
+    } else {
+      window.location.href = "/";
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Google login failed: " + (err as Error).message);
+  }
+};
+
+
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
@@ -148,6 +187,7 @@ export default function LoginPage() {
                       <Button
                         className="w-full h-12 text-base flex items-center justify-center gap-2 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 cursor-pointer"
                         variant="outline"
+                        onClick={()=>handleGoogleLogin()}
                       >
                         <FcGoogle className="text-xl" />
                         Đăng nhập bằng Google
