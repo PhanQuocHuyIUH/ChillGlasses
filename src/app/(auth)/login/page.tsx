@@ -35,14 +35,15 @@ export default function LoginPage() {
     const token = data.data.accessToken;
     const user = data.data.user;
     
-      localStorage.setItem("token", token);
-    
+    localStorage.setItem("token", token);
+    localStorage.setItem("role", user.role);
 
     document.cookie = `token=${token}; path=/;`;
     document.cookie = `role=${user.role}; path=/;`;
 
+    // Redirect based on role
     if (user.role === "ADMIN") {
-      window.location.href = "/admin_accounts";
+      window.location.href = "/admin_dashboard";
     } else {
       window.location.href = "/";
     }
@@ -91,10 +92,12 @@ export default function LoginPage() {
       const meData = await resMe.json();
       const me = meData.data;
 
+      localStorage.setItem("role", me.role);
       document.cookie = `role=${me.role}; path=/;`;
 
+      // Redirect based on role
       if (me.role === "ADMIN") {
-        window.location.href = "/admin_accounts";
+        window.location.href = "/admin_dashboard";
       } else {
         window.location.href = "/";
       }

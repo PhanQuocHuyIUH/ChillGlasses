@@ -1,267 +1,604 @@
 "use client";
 
-import AdminHeader from "@/components/layout/AdminHeader";
-import SideBar from "@/components/layout/SideBar";
-import { useState } from "react";
-
-// Define the Product interface
-interface Product {
-  id: number | undefined;
-  name: string;
-  category: string;
-  price: string;
-  stock: number;
-  status: string;
-}
+import { useState, useEffect } from "react";
+import { adminProductApi, adminCategoryApi } from "@/lib/api/admin";
+import {
+  Product,
+  CreateProductRequest,
+  UpdateProductRequest,
+  Category,
+} from "@/types/admin";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  AlertTriangle,
+  Loader2,
+  Plus,
+  Edit,
+  Trash2,
+  Search,
+  Image as ImageIcon,
+} from "lucide-react";
 
 const AdminProductsPage = () => {
-  const [products, setProducts] = useState<Product[]>([
-    { id: 1, name: "Sản phẩm 1", category: "Danh mục 1", price: "500.000đ", stock: 20, status: "Hiển thị" },
-    { id: 2, name: "Sản phẩm 2", category: "Danh mục 2", price: "700.000đ", stock: 15, status: "Ẩn" },
-    { id: 3, name: "Sản phẩm 3", category: "Danh mục 1", price: "1.000.000đ", stock: 10, status: "Hiển thị" },
-  ]);
+  // State management
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
 
-  const [showModal, setShowModal] = useState(false); // State to control modal visibility
-  const [currentProduct, setCurrentProduct] = useState<Product>({
-    id: undefined,
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    page: 0,
+    size: 10,
+    totalElements: 0,
+    totalPages: 0,
+  });
+
+  // Filter state
+  const [filters, setFilters] = useState({
+    keyword: "",
+    categoryId: undefined as number | undefined,
+    brand: "",
+    minPrice: undefined as number | undefined,
+    maxPrice: undefined as number | undefined,
+    inStock: undefined as boolean | undefined,
+    page: 0,
+    size: 10,
+    sortBy: "id",
+    sortDir: "desc" as "asc" | "desc",
+  });
+
+  const [showModal, setShowModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<
+    number | undefined
+  >();
+  const [currentProduct, setCurrentProduct] = useState<CreateProductRequest>({
     name: "",
-    category: "",
-    price: "",
-    stock: 0,
-    status: "Hiển thị",
-  }); // Default product state
+    description: "",
+    price: 0,
+    stockQuantity: 0,
+    categoryId: 0,
+    brand: "",
+  });
 
-  const handleEdit = (product: Product) => {
-    setCurrentProduct(product); // Set the product to be edited
-    setShowModal(true); // Show the modal
-  };
+  // Fetch data on mount
+  useEffect(() => {
+    fetchCategories();
+    fetchProducts();
+  }, []);
 
-  const handleDelete = (id: number) => {
-    if (confirm("Bạn có chắc chắn muốn xóa sản phẩm này?")) {
-      setProducts(products.filter((product) => product.id !== id));
+  // Fetch products when filters change
+  useEffect(() => {
+    fetchProducts();
+  }, [filters]);
+
+  // Fetch all categories for dropdown
+  const fetchCategories = async () => {
+    try {
+      const response = await adminCategoryApi.getAllCategories();
+      setCategories(response.data);
+    } catch (err: any) {
+      console.error("Error fetching categories:", err);
     }
   };
 
+  // Fetch products with filters
+  const fetchProducts = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await adminProductApi.getAllProducts(filters);
+      setProducts(response.data.content);
+      setPagination({
+        page: response.data.pageNumber,
+        size: response.data.pageSize,
+        totalElements: response.data.totalElements,
+        totalPages: response.data.totalPages,
+      });
+    } catch (err: any) {
+      console.error("Error fetching products:", err);
+      setError(err.response?.data?.message || "Failed to fetch products");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle search
+  const handleSearch = (keyword: string) => {
+    setFilters({ ...filters, keyword, page: 0 });
+  };
+
+  // Handle category filter
+  const handleCategoryFilter = (categoryId: string) => {
+    setFilters({
+      ...filters,
+      categoryId: categoryId === "all" ? undefined : parseInt(categoryId),
+      page: 0,
+    });
+  };
+
+  // Handle pagination
+  const handleNextPage = () => {
+    if (pagination.page < pagination.totalPages - 1) {
+      setFilters({ ...filters, page: filters.page + 1 });
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (pagination.page > 0) {
+      setFilters({ ...filters, page: filters.page - 1 });
+    }
+  };
+
+  // Open add product modal
   const handleAddProduct = () => {
     setCurrentProduct({
-      id: undefined,
       name: "",
-      category: "",
-      price: "",
-      stock: 0,
-      status: "Hiển thị",
-    }); // Reset the product for adding a new one
-    setShowModal(true); // Show the modal
+      description: "",
+      price: 0,
+      stockQuantity: 0,
+      categoryId: categories[0]?.id || 0,
+      brand: "",
+    });
+    setIsEditing(false);
+    setEditingProductId(undefined);
+    setShowModal(true);
   };
 
-  const handleSave = () => {
-    // Kiểm tra tên sản phẩm
+  // Open edit product modal
+  const handleEditProduct = (product: Product) => {
+    setCurrentProduct({
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      stockQuantity: product.stockQuantity,
+      categoryId: product.categoryId,
+      brand: product.brand || "",
+    });
+    setIsEditing(true);
+    setEditingProductId(product.id);
+    setShowModal(true);
+  };
+
+  // Save product (create or update)
+  const handleSaveProduct = async () => {
+    // Validation
     if (!currentProduct.name || currentProduct.name.trim() === "") {
       alert("⚠ Tên sản phẩm không được để trống!");
-    return;
-    }
-
-    // Kiểm tra danh mục
-    if (!currentProduct.category || currentProduct.category.trim() === "") {
-      alert("⚠ Danh mục không được để trống!");
       return;
     }
-
-    // Kiểm tra giá (không để trống + phải chứa số)
-    if (!currentProduct.price || currentProduct.price.trim() === "") {
-      alert("⚠ Giá sản phẩm không được để trống!");
+    if (currentProduct.price <= 0) {
+      alert("⚠ Giá sản phẩm phải lớn hơn 0!");
       return;
     }
-
-    if (!/[0-9]/.test(currentProduct.price)) {
-      alert("⚠ Giá sản phẩm phải chứa số!");
-      return;
-    }
-
-    // Kiểm tra tồn kho hợp lệ
-    if (isNaN(currentProduct.stock)) {
-      alert("⚠ Tồn kho phải là số!");
-      return;
-    }
-
-    if (currentProduct.stock < 0) {
+    if (currentProduct.stockQuantity < 0) {
       alert("⚠ Tồn kho không được nhỏ hơn 0!");
       return;
     }
-
-
-    if (currentProduct.id) {
-      // Update
-      setProducts((prev) =>
-        prev.map((product) =>
-          product.id === currentProduct.id ? currentProduct : product
-        )
-      );
-    } else {
-      // Add
-      setProducts((prev) => [
-        ...prev,
-        { ...currentProduct, id: Date.now() },
-      ]);
+    if (!currentProduct.categoryId) {
+      alert("⚠ Vui lòng chọn danh mục!");
+      return;
     }
-    setShowModal(false);
+
+    setActionLoading(isEditing ? editingProductId! : -1);
+    try {
+      if (isEditing && editingProductId) {
+        // Update product
+        const updateData: UpdateProductRequest = { ...currentProduct };
+        await adminProductApi.updateProduct(editingProductId, updateData);
+        alert("Cập nhật sản phẩm thành công!");
+      } else {
+        // Create product
+        await adminProductApi.createProduct(currentProduct);
+        alert("Thêm sản phẩm thành công!");
+      }
+      await fetchProducts();
+      setShowModal(false);
+    } catch (err: any) {
+      console.error("Error saving product:", err);
+      alert(err.response?.data?.message || "Failed to save product");
+    } finally {
+      setActionLoading(null);
+    }
   };
 
+  // Delete product
+  const handleDeleteProduct = async (id: number) => {
+    if (!confirm("Bạn có chắc chắn muốn xóa sản phẩm này?")) return;
+
+    setActionLoading(id);
+    try {
+      await adminProductApi.deleteProduct(id);
+      await fetchProducts();
+      alert("Xóa sản phẩm thành công!");
+    } catch (err: any) {
+      console.error("Error deleting product:", err);
+      alert(err.response?.data?.message || "Failed to delete product");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Toggle product active status
+  const handleToggleStatus = async (id: number, isActive: boolean) => {
+    setActionLoading(id);
+    try {
+      if (isActive) {
+        await adminProductApi.deactivateProduct(id);
+      } else {
+        await adminProductApi.activateProduct(id);
+      }
+      await fetchProducts();
+      alert(`${isActive ? "Vô hiệu hóa" : "Kích hoạt"} sản phẩm thành công!`);
+    } catch (err: any) {
+      console.error("Error toggling product status:", err);
+      alert(err.response?.data?.message || "Failed to toggle product status");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Loading state
+  if (loading && products.length === 0) {
+    return (
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <span className="ml-3 text-lg">Loading products...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto">
+        <Card className="max-w-2xl mx-auto mt-8">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-center text-red-600">
+              <AlertTriangle className="w-8 h-8 mr-3" />
+              <div>
+                <p className="text-lg font-semibold">Error loading products</p>
+                <p className="text-sm text-gray-600">{error}</p>
+              </div>
+            </div>
+            <Button onClick={fetchProducts} className="mt-4 w-full">
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <AdminHeader />
-      <SideBar />
-      <div className="p-8 w-screen">
-        <h1 className="text-3xl font-bold mb-8 mt-5 text-center">Quản Lý Sản Phẩm</h1>
-        <button
-          onClick={handleAddProduct}
-          className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 mb-6 ml-100"
-        >
-          Thêm sản phẩm mới
-        </button>
-        <table className="ml-100 bg-white shadow-md rounded-lg border border-gray-300">
-          <thead className="bg-gray-200 border-b border-gray-300">
-            <tr>
-              <th className="text-left px-4 py-2 border-r border-gray-300">Tên sản phẩm</th>
-              <th className="text-left px-4 py-2 border-r border-gray-300">Danh mục</th>
-              <th className="text-left px-4 py-2 border-r border-gray-300">Giá</th>
-              <th className="text-left px-4 py-2 border-r border-gray-300">Tồn kho</th>
-              <th className="text-left px-4 py-2 border-r border-gray-300">Trạng thái</th>
-              <th className="text-center px-4 py-2">Hành động</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-300">
-            {products.map((product) => (
-              <tr key={product.id} className="hover:bg-gray-100">
-                <td className="px-4 py-2 border-r border-gray-300">{product.name}</td>
-                <td className="px-4 py-2 border-r border-gray-300">{product.category}</td>
-                <td className="px-4 py-2 border-r border-gray-300">{product.price}</td>
-                <td className="px-4 py-2 border-r border-gray-300">{product.stock}</td>
-                <td className="px-4 py-2 border-r border-gray-300">{product.status}</td>
-                <td className="px-4 py-2 text-center">
-                  <button
-                    onClick={() => handleEdit(product)}
-                    className="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 mr-2"
-                  >
-                    Sửa
-                  </button>
-                  <button
-                    onClick={() => handleDelete(product.id!)}
-                    className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
-                  >
-                    Xóa
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+    <>
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-3xl font-bold mb-6 text-center">
+          Quản Lý Sản Phẩm
+        </h1>
 
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center" aria-hidden={!showModal}>
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-lg w-full">
-            <h2 className="text-xl font-bold mb-4">
-              {currentProduct.id ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm mới"}
-            </h2>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Tên sản phẩm</label>
-              <input
-                type="text"
-                value={currentProduct.name}
-                placeholder="Nhập tên sản phẩm"
-                onChange={(e) =>
-                  setCurrentProduct((prev) => ({
-                    ...prev,
-                    name: e.target.value,
-                  }))
-                }
-                className="w-full border rounded px-3 py-2"
-              />
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Danh mục</label>
-              <input
-                type="text"
-                value={currentProduct.category}
-                placeholder="Nhập danh mục sản phẩm"
-                onChange={(e) =>
-                  setCurrentProduct((prev) => ({
-                    ...prev,
-                    category: e.target.value,
-                  }))
-                }
-                className="w-full border rounded px-3 py-2"
-              />
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Giá</label>
-              <input
-                type="text"
-                value={currentProduct.price}
-                placeholder="Nhập giá sản phẩm"
-                title="Giá sản phẩm"
-                onChange={(e) =>
-                  setCurrentProduct((prev) => ({
-                    ...prev,
-                    price: e.target.value,
-                  }))
-                }
-                className="w-full border rounded px-3 py-2"
-              />
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Tồn kho</label>
-              <input
-                type="number"
-                value={currentProduct.stock}
-                placeholder="Nhập số lượng tồn kho"
-                title="Số lượng tồn kho"
-                onChange={(e) =>
-                  setCurrentProduct((prev) => ({
-                    ...prev,
-                    stock: parseInt(e.target.value, 10),
-                  }))
-                }
-                className="w-full border rounded px-3 py-2"
-              />
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Trạng thái</label>
-              <select
-                value={currentProduct.status}
-                onChange={(e) =>
-                  setCurrentProduct((prev) => ({
-                    ...prev,
-                    status: e.target.value,
-                  }))
-                }
-                className="w-full border rounded px-3 py-2"
+        {/* Filters and Add Button */}
+        <Card className="mb-6">
+          <CardContent className="pt-6">
+            <div className="flex gap-4 items-center">
+              <div className="flex-1">
+                <Input
+                  placeholder="Tìm kiếm sản phẩm..."
+                  value={filters.keyword}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              <Select
+                value={filters.categoryId?.toString() || "all"}
+                onValueChange={handleCategoryFilter}
               >
-                <option value="Hiển thị">Hiển thị</option>
-                <option value="Ẩn">Ẩn</option>
-              </select>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Danh mục" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả danh mục</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id.toString()}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button onClick={handleAddProduct}>
+                <Plus className="w-4 h-4 mr-2" />
+                Thêm sản phẩm
+              </Button>
             </div>
-            <div className="flex justify-end gap-4">
-              <button
-                onClick={() => setShowModal(false)}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleSave}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-              >
-                Lưu
-              </button>
-            </div>
+          </CardContent>
+        </Card>
+
+        {/* Products Table */}
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Tên sản phẩm</TableHead>
+                <TableHead>Danh mục</TableHead>
+                <TableHead>Giá</TableHead>
+                <TableHead>Tồn kho</TableHead>
+                <TableHead>Trạng thái</TableHead>
+                <TableHead className="text-center">Hành động</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {products.map((product) => (
+                <TableRow key={product.id}>
+                  <TableCell>{product.id}</TableCell>
+                  <TableCell className="font-medium">{product.name}</TableCell>
+                  <TableCell>
+                    {categories.find((c) => c.id === product.categoryId)
+                      ?.name || "N/A"}
+                  </TableCell>
+                  <TableCell>
+                    {product.price.toLocaleString("vi-VN")}đ
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        product.stockQuantity > 10
+                          ? "success"
+                          : product.stockQuantity > 0
+                          ? "warning"
+                          : "destructive"
+                      }
+                    >
+                      {product.stockQuantity}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={product.isActive ? "success" : "destructive"}
+                    >
+                      {product.isActive ? "Active" : "Inactive"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        handleToggleStatus(product.id, product.isActive)
+                      }
+                      disabled={actionLoading === product.id}
+                    >
+                      {actionLoading === product.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : product.isActive ? (
+                        "Ẩn"
+                      ) : (
+                        "Hiện"
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditProduct(product)}
+                      disabled={actionLoading === product.id}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDeleteProduct(product.id)}
+                      disabled={actionLoading === product.id}
+                    >
+                      {actionLoading === product.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+
+        {/* Pagination */}
+        <div className="flex justify-between items-center mt-4">
+          <p className="text-sm text-gray-600">
+            Showing {pagination.page * pagination.size + 1} to{" "}
+            {Math.min(
+              (pagination.page + 1) * pagination.size,
+              pagination.totalElements
+            )}{" "}
+            of {pagination.totalElements} products
+          </p>
+          <div className="space-x-2">
+            <Button
+              variant="outline"
+              onClick={handlePrevPage}
+              disabled={pagination.page === 0}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleNextPage}
+              disabled={pagination.page >= pagination.totalPages - 1}
+            >
+              Next
+            </Button>
           </div>
         </div>
-      )}
-    </div>
+      </div>
+
+      {/* Product Modal */}
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {isEditing ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm mới"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Tên sản phẩm *
+              </label>
+              <Input
+                type="text"
+                value={currentProduct.name}
+                onChange={(e) =>
+                  setCurrentProduct({ ...currentProduct, name: e.target.value })
+                }
+                placeholder="Nhập tên sản phẩm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Mô tả</label>
+              <Textarea
+                value={currentProduct.description}
+                onChange={(e) =>
+                  setCurrentProduct({
+                    ...currentProduct,
+                    description: e.target.value,
+                  })
+                }
+                placeholder="Nhập mô tả sản phẩm"
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Danh mục *
+                </label>
+                <Select
+                  value={currentProduct.categoryId.toString()}
+                  onValueChange={(value) =>
+                    setCurrentProduct({
+                      ...currentProduct,
+                      categoryId: parseInt(value),
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn danh mục" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id.toString()}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Thương hiệu
+                </label>
+                <Input
+                  type="text"
+                  value={currentProduct.brand}
+                  onChange={(e) =>
+                    setCurrentProduct({
+                      ...currentProduct,
+                      brand: e.target.value,
+                    })
+                  }
+                  placeholder="Nhập thương hiệu"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Giá (VNĐ) *
+                </label>
+                <Input
+                  type="number"
+                  value={currentProduct.price}
+                  onChange={(e) =>
+                    setCurrentProduct({
+                      ...currentProduct,
+                      price: parseFloat(e.target.value),
+                    })
+                  }
+                  placeholder="Nhập giá"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Tồn kho *
+                </label>
+                <Input
+                  type="number"
+                  value={currentProduct.stockQuantity}
+                  onChange={(e) =>
+                    setCurrentProduct({
+                      ...currentProduct,
+                      stockQuantity: parseInt(e.target.value),
+                    })
+                  }
+                  placeholder="Nhập số lượng"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowModal(false)}>
+              Hủy
+            </Button>
+            <Button
+              onClick={handleSaveProduct}
+              disabled={actionLoading !== null}
+            >
+              {actionLoading !== null ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : isEditing ? (
+                "Cập nhật"
+              ) : (
+                "Thêm"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
