@@ -1,14 +1,13 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  /* config options here */
-  // devIndicators: false,
-  // images: {
-  //   domains: [], // Thêm các domain được phép
-  // },
-  // env: {
-  //   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
-  // },
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'kinhmateyeplus.com', // Domain chứa ảnh của bạn
+      }
+    ],
+  },
 };
 
 export default nextConfig;

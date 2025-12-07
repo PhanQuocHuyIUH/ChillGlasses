@@ -4,6 +4,7 @@ import axios, {
   InternalAxiosRequestConfig,
 } from "axios";
 import { getAuth } from "firebase/auth";
+import "@/lib/firebaseConfig";
 
 // Base API URL from environment variable
 const API_BASE_URL =
