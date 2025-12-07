@@ -5,28 +5,38 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   getCart,
-  getCartCount,
   updateCartItem,
   removeCartItem,
   clearCart,
   type CartItem,
   type CartResponse,
 } from "@/lib/api/cart";
+import { useRouter } from "next/navigation";
+import { isLoggedIn } from "@/lib/authClient";
 
 const formatPrice = (value: number) => {
   return value.toLocaleString("vi-VN");
 };
 
 const CartPage = () => {
+  const router = useRouter();
+
   const [cart, setCart] = useState<CartResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notLoggedIn, setNotLoggedIn] = useState(false);
 
   const [updatingItemId, setUpdatingItemId] = useState<number | null>(null);
   const [clearing, setClearing] = useState(false);
 
-  // 🟢 Load cart từ backend khi mở trang
   useEffect(() => {
+    // 🔐 Nếu chưa login thì không load cart, đẩy sang login
+    if (!isLoggedIn()) {
+      setNotLoggedIn(true);
+      router.push("/login?redirect=/cart");
+      return;
+    }
+
     const fetchCart = async () => {
       try {
         setLoading(true);
@@ -42,12 +52,11 @@ const CartPage = () => {
     };
 
     fetchCart();
-  }, []);
+  }, [router]);
 
   const items: CartItem[] = cart?.items || [];
   const total = cart?.totalAmount ?? 0;
 
-  // 🔼 Tăng số lượng
   const increaseQty = async (item: CartItem) => {
     if (updatingItemId || clearing) return;
 
@@ -70,11 +79,10 @@ const CartPage = () => {
     }
   };
 
-  // 🔽 Giảm số lượng
   const decreaseQty = async (item: CartItem) => {
     if (updatingItemId || clearing) return;
 
-    if (item.quantity <= 1) return; // không cho giảm < 1
+    if (item.quantity <= 1) return;
 
     const newQty = item.quantity - 1;
 
@@ -91,7 +99,6 @@ const CartPage = () => {
     }
   };
 
-  // 🗑 Xóa 1 item
   const removeItem = async (item: CartItem) => {
     if (updatingItemId || clearing) return;
 
@@ -110,7 +117,6 @@ const CartPage = () => {
     }
   };
 
-  // 🧨 Xóa toàn bộ giỏ
   const handleClearCart = async () => {
     if (clearing || updatingItemId) return;
 
@@ -129,6 +135,24 @@ const CartPage = () => {
     }
   };
 
+  // 🔐 Nếu chưa login → không cho xem giỏ, chỉ gợi ý đăng nhập
+  if (notLoggedIn) {
+    return (
+        <div className="min-h-screen flex flex-col items-center justify-center px-4">
+          <h1 className="text-2xl font-semibold mb-3">Giỏ hàng</h1>
+          <p className="text-gray-600 mb-4 text-center">
+            Bạn chưa đăng nhập nên không thể xem giỏ hàng.
+          </p>
+          <button
+              onClick={() => router.push("/login?redirect=/cart")}
+              className="px-5 py-2 rounded-lg bg-black text-white text-sm"
+          >
+            Đăng nhập ngay
+          </button>
+        </div>
+    );
+  }
+
   if (loading) {
     return (
         <div className="min-h-screen flex items-center justify-center text-gray-500">
@@ -143,7 +167,7 @@ const CartPage = () => {
           <p className="mb-4">{error}</p>
           <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 rounded bg-black text-white text-sm"
+              className="px-4 py-2 rounded bg黑 text-white text-sm"
           >
             Thử tải lại
           </button>
@@ -164,10 +188,17 @@ const CartPage = () => {
               >
                 Tiếp tục mua sắm
               </Link>
+
+              <Link
+                  href="/orders"
+                  className="mt-2 block w-full text-center text-sm text-blue-600 hover:underline"
+              >
+                Xem lịch sử đơn hàng
+              </Link>
             </div>
         ) : (
             <div className="grid gap-6 md:grid-cols-[2fr,1fr]">
-              {/* 🔹 DANH SÁCH ITEM */}
+              {/* Danh sách item */}
               <div className="space-y-4">
                 {items.map((item) => (
                     <div
@@ -197,7 +228,11 @@ const CartPage = () => {
                         <div className="flex items-center border rounded">
                           <button
                               onClick={() => decreaseQty(item)}
-                              disabled={item.quantity <= 1 || updatingItemId === item.id || clearing}
+                              disabled={
+                                  item.quantity <= 1 ||
+                                  updatingItemId === item.id ||
+                                  clearing
+                              }
                               className="px-3 py-1 disabled:opacity-50"
                           >
                             −
@@ -232,7 +267,7 @@ const CartPage = () => {
                 ))}
               </div>
 
-              {/* 🔹 TỔNG TIỀN + ACTIONS */}
+              {/* Tổng tiền + actions */}
               <div className="bg-white shadow rounded-lg p-4">
                 <h2 className="font-medium mb-3">Tổng cộng</h2>
 
@@ -246,11 +281,12 @@ const CartPage = () => {
                   <span>{formatPrice(total)} đ</span>
                 </div>
 
-                <Link href="/checkout">
+                <Link href="/checkout?mode=cart">
                   <button className="mt-4 w-full bg-black text-white py-2 rounded-lg text-sm">
                     Tiến hành thanh toán
                   </button>
                 </Link>
+
 
                 <Link
                     href="/products"

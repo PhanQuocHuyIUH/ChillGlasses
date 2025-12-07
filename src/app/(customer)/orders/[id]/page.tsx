@@ -7,6 +7,7 @@ import {
     getOrderDetail,
     type OrderDetail,
     type OrderStatus,
+    requestCancelOrder,
 } from "@/lib/api/orders";
 
 const formatPrice = (value: number) => {
@@ -19,7 +20,6 @@ const formatDateTime = (iso: string) => {
     return d.toLocaleString("vi-VN");
 };
 
-// Dùng đúng enum status bên BE: PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED
 const statusLabel: Record<OrderStatus, string> = {
     PENDING: "Chờ xác nhận",
     PROCESSING: "Đang xử lý",
@@ -36,6 +36,12 @@ const statusBadgeClass: Record<OrderStatus, string> = {
     CANCELLED: "bg-red-100 text-red-700",
 };
 
+const CANCEL_REASONS = [
+    "Mua nhầm số lượng",
+    "Quên áp mã giảm giá",
+    "Sai thông tin người nhận / địa chỉ / số điện thoại",
+];
+
 const OrderDetailPage = () => {
     const params = useParams();
     const router = useRouter();
@@ -45,7 +51,11 @@ const OrderDetailPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // 🔍 Load chi tiết đơn từ BE
+    const [showCancelModal, setShowCancelModal] = useState(false);
+    const [cancelReasons, setCancelReasons] = useState<string[]>([]);
+    const [otherReason, setOtherReason] = useState("");
+    const [submittingCancel, setSubmittingCancel] = useState(false);
+
     useEffect(() => {
         if (!orderId) {
             setError("Thiếu mã đơn hàng trên URL.");
@@ -86,7 +96,6 @@ const OrderDetailPage = () => {
         };
     }, [orderId]);
 
-    // 🧮 Tính tiền
     const subtotal = order
         ? order.items.reduce(
             (sum, item) => sum + item.productPrice * item.quantity,
@@ -97,7 +106,62 @@ const OrderDetailPage = () => {
     const shippingFee = order?.shippingFee ?? 0;
     const total = order?.totalAmount ?? subtotal + shippingFee;
 
-    // 🎨 UI trạng thái load / lỗi
+    const toggleReason = (reason: string) => {
+        setCancelReasons((prev) =>
+            prev.includes(reason)
+                ? prev.filter((r) => r !== reason)
+                : [...prev, reason]
+        );
+    };
+
+    const handleOpenCancelModal = () => {
+        setShowCancelModal(true);
+    };
+
+    const handleCloseCancelModal = () => {
+        setShowCancelModal(false);
+        setSubmittingCancel(false);
+    };
+
+    const handleConfirmCancel = async () => {
+        if (!order) return;
+
+        if (cancelReasons.length === 0 && otherReason.trim() === "") {
+            alert("Vui lòng chọn ít nhất một lý do hoặc nhập lý do khác.");
+            return;
+        }
+
+        try {
+            setSubmittingCancel(true);
+
+            // 🔗 Gửi request lên backend (nếu BE chưa có endpoint này thì sẽ báo lỗi ở console)
+            await requestCancelOrder(order.id, {
+                reasons: cancelReasons,
+                otherReason: otherReason.trim() || undefined,
+            });
+
+            // 🟢 Cập nhật trạng thái ngay trên UI cho user thấy phản hồi
+            setOrder((prev) =>
+                prev ? { ...prev, status: "CANCELLED" as OrderStatus } : prev
+            );
+
+            alert("Yêu cầu hủy đơn của bạn đã được ghi nhận.");
+
+            setShowCancelModal(false);
+            // Có thể ở lại trang chi tiết, hoặc quay về danh sách:
+            // router.push("/orders");
+        } catch (err) {
+            console.error("Lỗi khi gửi yêu cầu hủy đơn:", err);
+            alert("Không thể gửi yêu cầu hủy đơn. Vui lòng thử lại sau.");
+        } finally {
+            setSubmittingCancel(false);
+        }
+    };
+
+    const canRequestCancel =
+        order && (order.status === "PENDING");
+        // (order.status === "PENDING" || order.status === "PROCESSING");
+
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 pt-24 pb-32 px-4">
@@ -129,8 +193,8 @@ const OrderDetailPage = () => {
     return (
         <div className="min-h-screen bg-gray-100 pt-24 pb-32 px-4">
             <div className="max-w-4xl mx-auto space-y-8">
-                {/* Header + status */}
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                {/* Header + trạng thái + quay lại */}
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div>
                         <h1 className="text-2xl md:text-3xl font-bold">
                             Chi tiết đơn hàng {order.orderCode}
@@ -139,14 +203,24 @@ const OrderDetailPage = () => {
                             Ngày đặt: {formatDateTime(order.orderDate)}
                         </p>
                     </div>
-                    <span
-                        className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${statusBadgeClass[order.status]}`}
-                    >
-            {statusLabel[order.status]}
-          </span>
+
+                    <div className="flex flex-col items-end gap-2">
+            <span
+                className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${statusBadgeClass[order.status]}`}
+            >
+              {statusLabel[order.status]}
+            </span>
+                        <button
+                            type="button"
+                            onClick={() => router.push("/orders")}
+                            className="text-xs text-blue-600 hover:underline"
+                        >
+                            ⟵ Quay lại lịch sử đơn hàng
+                        </button>
+                    </div>
                 </div>
 
-                {/* Thông tin người đặt + giao hàng */}
+                {/* Thông tin đơn hàng */}
                 <div className="bg-white shadow p-6 rounded-lg space-y-2">
                     <h2 className="text-lg font-semibold mb-2">Thông tin đơn hàng</h2>
                     <p>
@@ -173,46 +247,49 @@ const OrderDetailPage = () => {
                     )}
                 </div>
 
-                {/* Danh sách sản phẩm */}
+                {/* Sản phẩm */}
                 <div className="bg-white shadow p-6 rounded-lg">
                     <h2 className="text-lg font-semibold mb-4">Sản phẩm</h2>
 
                     <div className="space-y-4">
-                        {order.items.map((item) => (
-                            <div
-                                key={item.id}
-                                className="flex items-center gap-4 border-b pb-4 last:border-b-0"
-                            >
-                                <div className="w-20 h-20 relative bg-gray-100 rounded">
-                                    {item.productImage ? (
+                        {order.items.map((item) => {
+                            const safeImageSrc =
+                                item.productImage &&
+                                typeof item.productImage === "string" &&
+                                item.productImage.trim() !== ""
+                                    ? item.productImage
+                                    : "/images/product1.jpg";
+
+                            return (
+                                <div
+                                    key={item.id}
+                                    className="flex items-center gap-4 border-b pb-4 last:border-b-0"
+                                >
+                                    <div className="w-20 h-20 relative bg-gray-100 rounded overflow-hidden">
                                         <Image
-                                            src={item.productImage}
-                                            alt={item.productName}
+                                            src={safeImageSrc}
+                                            alt={item.productName || "Sản phẩm"}
                                             fill
                                             className="object-cover rounded"
                                         />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
-                                            No image
-                                        </div>
-                                    )}
-                                </div>
+                                    </div>
 
-                                <div className="flex-1">
-                                    <p className="font-semibold">{item.productName}</p>
-                                    <p className="text-gray-500 text-xs">
-                                        Mã sản phẩm: {item.productSlug}
-                                    </p>
-                                    <p className="text-gray-600 text-sm">
-                                        {item.formattedPrice} x {item.quantity}
+                                    <div className="flex-1">
+                                        <p className="font-semibold">{item.productName}</p>
+                                        <p className="text-gray-500 text-xs">
+                                            Mã sản phẩm: {item.productSlug}
+                                        </p>
+                                        <p className="text-gray-600 text-sm">
+                                            {item.formattedPrice} x {item.quantity}
+                                        </p>
+                                    </div>
+
+                                    <p className="font-semibold text-sm">
+                                        {item.formattedSubtotal}
                                     </p>
                                 </div>
-
-                                <p className="font-semibold text-sm">
-                                    {item.formattedSubtotal}
-                                </p>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -233,13 +310,96 @@ const OrderDetailPage = () => {
                     </div>
                 </div>
 
-                {/* Button hủy (chưa nối API, để UI trước) */}
-                {order.status === "PENDING" || order.status === "PROCESSING" ? (
-                    <button className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg text-sm">
+                {/* Hủy đơn hoặc hỗ trợ */}
+                {canRequestCancel ? (
+                    <button
+                        className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg text-sm"
+                        type="button"
+                        onClick={handleOpenCancelModal}
+                    >
                         Yêu cầu hủy đơn
                     </button>
-                ) : null}
+                ) : (
+                    <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm px-4 py-3 rounded-lg">
+                        <p className="font-semibold mb-1">
+                            Quý khách hàng xin lưu ý:
+                        </p>
+                        <p>
+                            Cần hỗ trợ, vui lòng liên hệ: Điện thoại:{" "}
+                            <span className="font-semibold">0123 456 789</span> hoặc Email:{" "}
+                            <span className="font-semibold">support@chillglasses.com</span>{" "}
+                            (hỗ trợ 24/24).
+                        </p>
+                    </div>
+                )}
             </div>
+
+            {/* Popup hủy đơn */}
+            {showCancelModal && (
+                <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+                    <div className="bg-white w-full max-w-md rounded-lg shadow-lg p-6 relative">
+                        <button
+                            type="button"
+                            onClick={handleCloseCancelModal}
+                            className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-sm"
+                        >
+                            ✕
+                        </button>
+
+                        <h2 className="text-lg font-semibold mb-2">
+                            Yêu cầu hủy đơn {order.orderCode}
+                        </h2>
+                        <p className="text-xs text-gray-500 mb-4">
+                            Vui lòng chọn lý do hủy đơn. Thông tin này giúp chúng tôi cải thiện
+                            dịch vụ tốt hơn.
+                        </p>
+
+                        <div className="space-y-2 mb-3 text-sm">
+                            {CANCEL_REASONS.map((reason) => (
+                                <label key={reason} className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={cancelReasons.includes(reason)}
+                                        onChange={() => toggleReason(reason)}
+                                    />
+                                    <span>{reason}</span>
+                                </label>
+                            ))}
+                        </div>
+
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium mb-1">
+                                Lý do khác (tuỳ chọn)
+                            </label>
+                            <textarea
+                                value={otherReason}
+                                onChange={(e) => setOtherReason(e.target.value)}
+                                className="w-full border rounded px-3 py-2 text-sm min-h-[70px]"
+                                placeholder="Nhập thêm thông tin nếu bạn muốn..."
+                            />
+                        </div>
+
+                        <div className="flex gap-2 justify-end text-sm">
+                            <button
+                                type="button"
+                                onClick={handleCloseCancelModal}
+                                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                                disabled={submittingCancel}
+                            >
+                                Đóng
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleConfirmCancel}
+                                className="px-4 py-2 rounded-lg bg-red-500 text-white font-semibold hover:bg-red-600 disabled:opacity-60"
+                                disabled={submittingCancel}
+                            >
+                                {submittingCancel ? "Đang gửi..." : "Xác nhận hủy đơn"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

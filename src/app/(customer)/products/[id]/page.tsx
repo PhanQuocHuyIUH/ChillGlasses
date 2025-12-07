@@ -1,25 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { Product } from "@/types/product";
 import { getProductById } from "@/lib/api/products";
-import { addToCart } from "@/lib/api/cart"; // 🆕 import API cart
-import { useRouter } from "next/navigation";
-
+import { addToCart } from "@/lib/api/cart";
+import { requireLogin } from "@/lib/authClient";
 
 export default function ProductDetailPage() {
-  const router = useRouter(); // ⬅️ thêm dòng này
+  const router = useRouter();
   const { id } = useParams();
+
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // State xử lý ảnh lỗi
   const [imageError, setImageError] = useState(false);
 
-  // State cho UI interactions
   const [quantity, setQuantity] = useState(1);
   const [newReview, setNewReview] = useState({
     name: "",
@@ -27,7 +25,6 @@ export default function ProductDetailPage() {
     comment: "",
   });
 
-  // Mock review (vì API chưa trả về list review)
   const [reviews, setReviews] = useState<any[]>([
     {
       name: "Người mua hàng",
@@ -37,7 +34,7 @@ export default function ProductDetailPage() {
     },
   ]);
 
-  const [adding, setAdding] = useState(false); // 🆕 loading cho nút giỏ hàng
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     async function loadProduct() {
@@ -62,7 +59,6 @@ export default function ProductDetailPage() {
     loadProduct();
   }, [id]);
 
-  // Xử lý tăng giảm số lượng (Không cho tăng quá tồn kho)
   const handleIncrease = () => {
     if (product && quantity < product.stockQuantity) {
       setQuantity((prev) => prev + 1);
@@ -83,13 +79,20 @@ export default function ProductDetailPage() {
     }
   };
 
-  // 🆕 Hàm gọi API Add to cart
+  // 🛒 Thêm vào giỏ – BẮT BUỘC LOGIN
   const handleAddToCart = async () => {
     if (!product) return;
     if (product.stockQuantity === 0) {
       alert("Sản phẩm đã hết hàng.");
       return;
     }
+
+    const blocked = requireLogin({
+      router,
+      redirectTo: `/products/${product.id}`,
+      message: "Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.",
+    });
+    if (blocked) return;
 
     try {
       setAdding(true);
@@ -106,8 +109,8 @@ export default function ProductDetailPage() {
     }
   };
 
-
-  // 🆕 Hàm “Mua ngay” – tạm thời chỉ thêm vào giỏ, sau này redirect /checkout
+  // ⚡ Mua ngay – BẮT BUỘC LOGIN
+  // 👉 LƯU productId + quantity vào localStorage để checkout biết quay về đâu
   const handleBuyNow = async () => {
     if (!product) return;
     if (product.stockQuantity === 0) {
@@ -115,12 +118,31 @@ export default function ProductDetailPage() {
       return;
     }
 
+    const blocked = requireLogin({
+      router,
+      redirectTo: `/products/${product.id}`,
+      message: "Vui lòng đăng nhập để mua hàng.",
+    });
+    if (blocked) return;
+
     try {
       setAdding(true);
-      // 1) Add vào giỏ
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem(
+            "buyNowPayload",
+            JSON.stringify({
+              productId: product.id,
+              quantity,
+            })
+        );
+      }
+
+      // Vẫn addToCart để backend có dữ liệu tạo đơn
       await addToCart(product.id, quantity);
-      // 2) Redirect sang checkout
-      router.push("/checkout"); // hoặc "/customer/checkout" nếu route của nhóm bạn đặt vậy
+
+      // Sang checkout với mode=buyNow để phân biệt với từ giỏ hàng
+      router.push("/checkout?mode=buyNow");
     } catch (err) {
       console.error("Lỗi khi mua ngay:", err);
       alert("Không thể thực hiện Mua ngay. Vui lòng thử lại.");
@@ -128,7 +150,6 @@ export default function ProductDetailPage() {
       setAdding(false);
     }
   };
-
 
   if (loading)
     return (
@@ -143,7 +164,6 @@ export default function ProductDetailPage() {
         </div>
     );
 
-  // Tính toán trạng thái tồn kho
   const isOutOfStock = product.stockQuantity === 0;
   const hasDiscount = product.originalPrice > product.price;
   const discountPercent = hasDiscount
@@ -152,18 +172,16 @@ export default function ProductDetailPage() {
       )
       : 0;
 
-  // 🆕 Fix logic ảnh: ưu tiên ảnh từ backend, nếu lỗi hoặc rỗng thì fallback
   const imageUrl =
       imageError || !product.primaryImageUrl
-          ? "/images/product1.jpg" // file nằm trong /public/images/product1.jpg
+          ? "/images/product1.jpg"
           : product.primaryImageUrl;
 
   return (
       <div className="container mx-auto py-10 px-4 text-black">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-          {/* === CỘT TRÁI: HÌNH ẢNH === */}
+          {/* Hình ảnh */}
           <div className="relative flex justify-center border rounded-lg p-4 shadow-sm bg-white">
-            {/* Badge giảm giá */}
             {hasDiscount && (
                 <span className="absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold z-10">
               -{discountPercent}%
@@ -182,7 +200,6 @@ export default function ProductDetailPage() {
                 priority
             />
 
-            {/* Badge Hết hàng đè lên ảnh */}
             {isOutOfStock && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/10">
               <span className="bg-black text-white px-6 py-3 text-xl font-bold uppercase -rotate-12 border-2 border-white">
@@ -192,7 +209,7 @@ export default function ProductDetailPage() {
             )}
           </div>
 
-          {/* === CỘT PHẢI: THÔNG TIN === */}
+          {/* Thông tin */}
           <div>
             <p className="text-sm text-gray-500 mb-2 uppercase tracking-wide">
               {product.categoryName} • {product.brand}
@@ -201,7 +218,6 @@ export default function ProductDetailPage() {
               {product.name}
             </h1>
 
-            {/* Giá bán */}
             <div className="flex items-end gap-3 mb-6">
             <span className="text-3xl text-red-600 font-bold">
               {product.formattedPrice}
@@ -244,7 +260,7 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            {/* Chọn số lượng */}
+            {/* Số lượng */}
             <div className="flex items-center mb-6">
               <span className="mr-4 font-semibold">Số lượng:</span>
               <div className="flex items-center border border-gray-300 rounded overflow-hidden">
@@ -260,9 +276,7 @@ export default function ProductDetailPage() {
                 </div>
                 <button
                     onClick={handleIncrease}
-                    disabled={
-                        isOutOfStock || quantity >= product.stockQuantity
-                    }
+                    disabled={isOutOfStock || quantity >= product.stockQuantity}
                     className="px-4 py-2 bg-gray-100 hover:bg-gray-200 disabled:opacity-50"
                 >
                   +
@@ -305,13 +319,12 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
-        {/* === PHẦN REVIEW === */}
+        {/* Review placeholder */}
         <div className="mt-16 border-t pt-10">
           <h2 className="text-2xl font-bold mb-6">
             Đánh giá khách hàng ({product.reviewCount})
           </h2>
           <div className="bg-gray-50 p-6 rounded-lg text-center text-gray-500">
-            {/* Tạm thời để vậy, sau nối API review sau */}
             <p>Chức năng hiển thị chi tiết đánh giá đang được cập nhật.</p>
           </div>
         </div>

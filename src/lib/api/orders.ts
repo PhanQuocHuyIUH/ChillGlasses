@@ -145,3 +145,39 @@ export const getOrderDetail = async (id: number): Promise<OrderDetail> => {
     const res = await axiosClient.get<ApiResponse<OrderDetail>>(`/orders/${id}`);
     return res.data.data;
 };
+
+
+
+
+
+/** ===== API: YÊU CẦU HỦY ĐƠN HÀNG (PENDING/PROCESSING → CANCELLED) =====
+ * Swagger: POST /api/orders/{id}/cancel
+ * Hiện tại Swagger không mô tả request body → giả định BE không cần body.
+ */
+
+export interface CancelOrderPayload {
+    reasons: string[];
+    otherReason?: string;
+}
+
+// Để không phải sửa chỗ gọi, vẫn cho phép truyền payload nhưng tạm thời bỏ qua payload
+export const requestCancelOrder = async (
+    orderId: number,
+    _payload?: CancelOrderPayload
+) => {
+    try {
+        const res = await axiosClient.post<ApiResponse<OrderDetail>>(
+            `/orders/${orderId}/cancel`
+        );
+
+        return res.data.data;
+    } catch (error: any) {
+        console.error("API Error:", error?.response?.data || error);
+        const messageFromServer = error?.response?.data?.message;
+
+        throw new Error(
+            messageFromServer || "Không thể gửi yêu cầu hủy đơn"
+        );
+    }
+};
+

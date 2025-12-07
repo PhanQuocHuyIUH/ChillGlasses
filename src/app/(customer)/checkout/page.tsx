@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, FormEvent } from "react";
-import { useRouter } from "next/navigation";
-import { getCart, CartResponse, clearCart } from "@/lib/api/cart";
+import { useRouter, useSearchParams } from "next/navigation";
+import { getCart, CartResponse, clearCart, addToCart } from "@/lib/api/cart";
 import {
     createOrder,
     PaymentMethodApi,
@@ -16,19 +16,99 @@ const formatPrice = (value: number) => {
 type ShippingMethodUi = "standard" | "express";
 type PaymentMethodUi = "cod" | "bank" | "ewallet";
 
+type BuyNowPayload = {
+    productId: number;
+    quantity: number;
+};
+
+type PromoInfo = {
+    code: string | null;
+    valid: boolean;
+    discount: number;
+    message: string | null;
+};
+
+const evaluatePromotion = (
+    codeRaw: string,
+    subtotal: number,
+    shippingFee: number
+): PromoInfo => {
+    const code = codeRaw.trim().toUpperCase();
+    if (!code) {
+        return { code: null, valid: false, discount: 0, message: null };
+    }
+
+    // Chỉ cho phép chữ cái & chữ số
+    if (!/^[A-Z0-9]+$/.test(code)) {
+        return {
+            code,
+            valid: false,
+            discount: 0,
+            message:
+                "Mã khuyến mãi chỉ nên gồm chữ cái và chữ số, không có khoảng trắng hoặc ký tự đặc biệt.",
+        };
+    }
+
+    // Demo 3 mã mẫu
+    if (code === "FREESHIP") {
+        const discount = shippingFee;
+        return {
+            code,
+            valid: true,
+            discount,
+            message: "Áp dụng miễn phí vận chuyển cho đơn này.",
+        };
+    }
+
+    if (code === "WELCOME20") {
+        const discount = Math.round(subtotal * 0.2);
+        return {
+            code,
+            valid: true,
+            discount,
+            message: "Giảm 20% trên tổng giá trị sản phẩm.",
+        };
+    }
+
+    if (code === "XMAS50K") {
+        if (subtotal < 1_000_000) {
+            return {
+                code,
+                valid: false,
+                discount: 0,
+                message: "Mã này áp dụng cho đơn hàng từ 1.000.000 đ tiền hàng trở lên.",
+            };
+        }
+        return {
+            code,
+            valid: true,
+            discount: 50_000,
+            message:
+                "Giảm 50.000 đ cho đơn hàng từ 1.000.000 đ (chỉ tính trên tiền hàng).",
+        };
+    }
+
+    return {
+        code,
+        valid: false,
+        discount: 0,
+        message: "Mã khuyến mãi không tồn tại hoặc chưa được hỗ trợ trên hệ thống.",
+    };
+};
+
 const CheckoutPage = () => {
     // Cart thật từ backend
     const [cart, setCart] = useState<CartResponse | null>(null);
     const [cartLoading, setCartLoading] = useState(true);
     const [cartError, setCartError] = useState<string | null>(null);
 
-    // Thông tin khách hàng
+    // Thông tin khách
     const [fullName, setFullName] = useState("");
     const [phone, setPhone] = useState("");
     const [email, setEmail] = useState("");
     const [address, setAddress] = useState("");
 
-    // Shipping + payment + extra
+    // Shipping + payment
     const [shippingMethod, setShippingMethod] =
         useState<ShippingMethodUi>("standard");
     const [paymentMethod, setPaymentMethod] =
@@ -37,9 +117,28 @@ const CheckoutPage = () => {
     const [notes, setNotes] = useState("");
     const [promotionCode, setPromotionCode] = useState("");
 
+    const [promoInfo, setPromoInfo] = useState<PromoInfo>({
+        code: null,
+        valid: false,
+        discount: 0,
+        message: null,
+    });
+
+    const [errors, setErrors] = useState<{
+        fullName?: string;
+        phone?: string;
+        email?: string;
+        address?: string;
+        notes?: string;
+        promotionCode?: string;
+    }>({});
+
     const [submitting, setSubmitting] = useState(false);
 
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const modeParam = searchParams.get("mode");
+    const isBuyNowMode = modeParam === "buyNow";
 
     // 1. Load cart từ backend
     useEffect(() => {
@@ -80,10 +179,48 @@ const CheckoutPage = () => {
         }
     }, []);
 
-    // 3. Tính toán từ cart
-    const items = cart?.items ?? [];
+    // 3. Tính toán từ cart + xử lý mode Mua ngay / Giỏ hàng
+    const itemsRaw: any[] = cart?.items ?? [];
 
-    const subtotal = items.reduce(
+    let buyNowProductId: number | null = null;
+    let buyNowQuantity: number | null = null;
+    let effectiveItems: any[] = itemsRaw;
+
+    if (
+        isBuyNowMode &&
+        typeof window !== "undefined" &&
+        itemsRaw.length > 0
+    ) {
+        try {
+            const raw = localStorage.getItem("buyNowPayload");
+            if (raw) {
+                const payload = JSON.parse(raw) as BuyNowPayload;
+                const found = itemsRaw.find(
+                    (it) => it.productId === payload.productId
+                );
+
+                if (found) {
+                    buyNowProductId = payload.productId;
+                    buyNowQuantity = payload.quantity;
+
+                    effectiveItems = [
+                        {
+                            ...found,
+                            quantity: payload.quantity,
+                            subtotal: found.productPrice * payload.quantity,
+                        },
+                    ];
+                }
+            }
+        } catch (e) {
+            console.warn("Không parse được buyNowPayload:", e);
+        }
+    } else if (!isBuyNowMode && typeof window !== "undefined") {
+        // Nếu đi từ giỏ hàng thì xóa trạng thái mua ngay cũ
+        localStorage.removeItem("buyNowPayload");
+    }
+
+    const subtotal = effectiveItems.reduce(
         (sum, item) => sum + item.productPrice * item.quantity,
         0
     );
@@ -91,9 +228,15 @@ const CheckoutPage = () => {
     const shippingFee: number =
         shippingMethod === "express" ? 60000 : 30000;
 
-    const total = subtotal + shippingFee;
+    // Tự tính khuyến mãi mỗi khi thay đổi
+    useEffect(() => {
+        const info = evaluatePromotion(promotionCode, subtotal, shippingFee);
+        setPromoInfo(info);
+    }, [promotionCode, subtotal, shippingFee]);
 
-    // Map UI -> API enum
+    const discount = promoInfo.valid ? promoInfo.discount : 0;
+    const finalTotal = subtotal + shippingFee - discount;
+
     const mapPaymentMethodToApi = (pm: PaymentMethodUi): PaymentMethodApi => {
         switch (pm) {
             case "cod":
@@ -112,28 +255,145 @@ const CheckoutPage = () => {
         return sm === "standard" ? "STANDARD" : "EXPRESS";
     };
 
+    const validateForm = () => {
+        const newErrors: {
+            fullName?: string;
+            phone?: string;
+            email?: string;
+            address?: string;
+            notes?: string;
+            promotionCode?: string;
+        } = {};
+
+        const trimName = fullName.trim();
+        const trimPhone = phone.trim();
+        const trimEmail = email.trim();
+        const trimAddress = address.trim();
+        const trimNotes = notes.trim();
+        const trimPromo = promotionCode.trim();
+
+        // Họ tên
+        if (!trimName) {
+            newErrors.fullName = "Vui lòng nhập họ tên.";
+        } else if (!/^[\p{L}\s]+$/u.test(trimName)) {
+            newErrors.fullName =
+                "Họ tên chỉ nên chứa chữ cái và khoảng trắng, không có số hoặc ký tự đặc biệt.";
+        }
+
+        // Số điện thoại
+        if (!trimPhone) {
+            newErrors.phone = "Vui lòng nhập số điện thoại.";
+        } else if (!/^0\d{9}$/.test(trimPhone)) {
+            newErrors.phone = "Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 0.";
+        }
+
+        // Email
+        if (!trimEmail) {
+            newErrors.email = "Vui lòng nhập email.";
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimEmail)) {
+            newErrors.email = "Địa chỉ email không hợp lệ.";
+        }
+
+        // Địa chỉ
+        if (!trimAddress) {
+            newErrors.address = "Vui lòng nhập địa chỉ giao hàng.";
+        } else if (
+            !/^[0-9\p{L}\s,./\-\\|]+$/u.test(trimAddress) ||
+            trimAddress.length < 10
+        ) {
+            newErrors.address =
+                "Địa chỉ giao hàng nên rõ ràng, chỉ chứa chữ, số và các ký tự , . / - | \\.";
+        }
+
+        // Ghi chú (optional)
+        if (trimNotes) {
+            if (!/^[0-9\p{L}\s.,!?'"()\-]+$/u.test(trimNotes)) {
+                newErrors.notes =
+                    "Ghi chú chỉ nên chứa chữ, số và dấu câu cơ bản (.,!?'-).";
+            }
+        }
+
+        // Mã khuyến mãi (optional)
+        if (trimPromo) {
+            const evalResult = evaluatePromotion(trimPromo, subtotal, shippingFee);
+            if (!evalResult.valid) {
+                newErrors.promotionCode =
+                    evalResult.message || "Mã khuyến mãi không hợp lệ.";
+            }
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
-        if (!cart || items.length === 0) {
+        if (!cart || effectiveItems.length === 0) {
             alert("Giỏ hàng hiện đang trống, không thể đặt hàng.");
             return;
         }
 
-        if (!fullName || !phone || !email || !address) {
-            alert("Vui lòng điền đầy đủ thông tin giao hàng.");
+        const isValid = validateForm();
+        if (!isValid) {
             return;
         }
 
         try {
             setSubmitting(true);
 
+            // 🧠 BACKUP CART TRƯỚC KHI GỌI /orders
+            let backupCartItems: { productId: number; quantity: number }[] = [];
+
+            if (cart && cart.items && cart.items.length > 0) {
+                const items = cart.items as any[];
+
+                if (isBuyNowMode && buyNowProductId && buyNowQuantity) {
+                    // Nếu là Mua ngay → trừ đúng số lượng đã Mua ngay
+                    backupCartItems = items
+                        .map((it) => {
+                            if (it.productId === buyNowProductId) {
+                                const remainingQty =
+                                    it.quantity - buyNowQuantity!;
+
+                                if (remainingQty > 0) {
+                                    return {
+                                        productId: it.productId,
+                                        quantity: remainingQty,
+                                    };
+                                }
+
+                                // Nếu <= 0 thì coi như sản phẩm này không tồn tại trong giỏ trước đó
+                                return null;
+                            }
+
+                            // Các sản phẩm khác giữ nguyên
+                            return {
+                                productId: it.productId,
+                                quantity: it.quantity,
+                            };
+                        })
+                        .filter(
+                            (
+                                x
+                            ): x is { productId: number; quantity: number } =>
+                                x !== null
+                        );
+                } else {
+                    // Không phải Mua ngay → cart backup đúng như hiện tại
+                    backupCartItems = items.map((it) => ({
+                        productId: it.productId,
+                        quantity: it.quantity,
+                    }));
+                }
+            }
+
             const payload = {
                 paymentMethod: mapPaymentMethodToApi(paymentMethod),
-                shippingAddress: address,
+                shippingAddress: address.trim(),
                 shippingMethod: mapShippingMethodToApi(shippingMethod),
-                notes: notes || undefined,
-                promotionCode: promotionCode || undefined,
+                notes: notes.trim() || undefined,
+                promotionCode: promotionCode.trim() || undefined,
             };
 
             console.log("📦 Payload gửi lên /api/orders:", payload);
@@ -142,8 +402,23 @@ const CheckoutPage = () => {
 
             console.log("✅ Order tạo thành công từ BE:", order);
 
-            // Clear cart để FE & DB sạch
-            await clearCart();
+            if (!isBuyNowMode) {
+                // Case: đặt từ GIỎ HÀNG → clear cart như cũ
+                await clearCart();
+            } else {
+                // Case: MUA NGAY → BE clear cart, FE dựng lại giỏ CŨ (đã trừ phần mua ngay)
+                if (backupCartItems.length > 0) {
+                    await Promise.all(
+                        backupCartItems.map((item) =>
+                            addToCart(item.productId, item.quantity)
+                        )
+                    );
+                }
+            }
+
+            if (typeof window !== "undefined") {
+                localStorage.removeItem("buyNowPayload");
+            }
 
             alert("Đặt hàng thành công! Mã đơn: " + order.orderCode);
 
@@ -153,6 +428,14 @@ const CheckoutPage = () => {
             alert("Đặt hàng thất bại. Vui lòng thử lại sau.");
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const handleBack = () => {
+        if (isBuyNowMode && buyNowProductId) {
+            router.push(`/products/${buyNowProductId}`);
+        } else {
+            router.push("/cart");
         }
     };
 
@@ -184,7 +467,7 @@ const CheckoutPage = () => {
         );
     }
 
-    if (!cart || items.length === 0) {
+    if (!cart || effectiveItems.length === 0) {
         return (
             <div className="min-h-screen max-w-5xl mx-auto px-4 pt-24 pb-16">
                 <h1 className="text-2xl font-semibold mb-3">Thanh toán</h1>
@@ -205,7 +488,20 @@ const CheckoutPage = () => {
 
     return (
         <div className="min-h-screen max-w-5xl mx-auto px-4 pt-24 pb-16">
-            <h1 className="text-2xl font-semibold mb-6">Thanh toán</h1>
+            <div className="flex items-center justify-between mb-6">
+                <h1 className="text-2xl font-semibold">
+                    Thanh toán
+                </h1>
+                <button
+                    type="button"
+                    onClick={handleBack}
+                    className="text-sm text-blue-600 hover:underline"
+                >
+                    {isBuyNowMode
+                        ? "Quay về trang sản phẩm"
+                        : "Quay về giỏ hàng"}
+                </button>
+            </div>
 
             <form
                 onSubmit={handleSubmit}
@@ -222,9 +518,18 @@ const CheckoutPage = () => {
                                 type="text"
                                 value={fullName}
                                 onChange={(e) => setFullName(e.target.value)}
-                                className="w-full border rounded px-3 py-2 text-sm"
+                                className={`w-full rounded px-3 py-2 text-sm outline-none transition ${
+                                    errors.fullName
+                                        ? "border border-red-500"
+                                        : "border border-gray-300"
+                                }`}
                                 placeholder="Nguyễn Văn A"
                             />
+                            {errors.fullName && (
+                                <p className="mt-1 text-xs text-red-500">
+                                    {errors.fullName}
+                                </p>
+                            )}
                         </div>
 
                         <div className="grid md:grid-cols-2 gap-3">
@@ -236,9 +541,18 @@ const CheckoutPage = () => {
                                     type="tel"
                                     value={phone}
                                     onChange={(e) => setPhone(e.target.value)}
-                                    className="w-full border rounded px-3 py-2 text-sm"
+                                    className={`w-full rounded px-3 py-2 text-sm outline-none transition ${
+                                        errors.phone
+                                            ? "border border-red-500"
+                                            : "border border-gray-300"
+                                    }`}
                                     placeholder="09xx xxx xxx"
                                 />
+                                {errors.phone && (
+                                    <p className="mt-1 text-xs text-red-500">
+                                        {errors.phone}
+                                    </p>
+                                )}
                             </div>
 
                             <div>
@@ -247,9 +561,18 @@ const CheckoutPage = () => {
                                     type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full border rounded px-3 py-2 text-sm"
+                                    className={`w-full rounded px-3 py-2 text-sm outline-none transition ${
+                                        errors.email
+                                            ? "border border-red-500"
+                                            : "border border-gray-300"
+                                    }`}
                                     placeholder="you@example.com"
                                 />
+                                {errors.email && (
+                                    <p className="mt-1 text-xs text-red-500">
+                                        {errors.email}
+                                    </p>
+                                )}
                             </div>
                         </div>
 
@@ -260,9 +583,18 @@ const CheckoutPage = () => {
                             <textarea
                                 value={address}
                                 onChange={(e) => setAddress(e.target.value)}
-                                className="w-full border rounded px-3 py-2 text-sm min-h-[60px]"
+                                className={`w-full rounded px-3 py-2 text-sm min-h-[60px] outline-none transition ${
+                                    errors.address
+                                        ? "border border-red-500"
+                                        : "border border-gray-300"
+                                }`}
                                 placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố"
                             />
+                            {errors.address && (
+                                <p className="mt-1 text-xs text-red-500">
+                                    {errors.address}
+                                </p>
+                            )}
                         </div>
 
                         {/* Ghi chú + mã giảm giá */}
@@ -273,9 +605,18 @@ const CheckoutPage = () => {
                             <textarea
                                 value={notes}
                                 onChange={(e) => setNotes(e.target.value)}
-                                className="w-full border rounded px-3 py-2 text-sm min-h-[50px]"
+                                className={`w-full rounded px-3 py-2 text-sm min-h-[50px] outline-none transition ${
+                                    errors.notes
+                                        ? "border border-red-500"
+                                        : "border border-gray-300"
+                                }`}
                                 placeholder="Ví dụ: Giao giờ hành chính, gọi trước khi giao..."
                             />
+                            {errors.notes && (
+                                <p className="mt-1 text-xs text-red-500">
+                                    {errors.notes}
+                                </p>
+                            )}
                         </div>
 
                         <div>
@@ -285,10 +626,32 @@ const CheckoutPage = () => {
                             <input
                                 type="text"
                                 value={promotionCode}
-                                onChange={(e) => setPromotionCode(e.target.value)}
-                                className="w-full border rounded px-3 py-2 text-sm"
-                                placeholder="Nhập mã giảm giá"
+                                onChange={(e) =>
+                                    setPromotionCode(e.target.value.toUpperCase())
+                                }
+                                className={`w-full rounded px-3 py-2 text-sm outline-none transition ${
+                                    errors.promotionCode
+                                        ? "border border-red-500"
+                                        : "border border-gray-300"
+                                }`}
+                                placeholder="Nhập mã giảm giá (FREESHIP, WELCOME20, XMAS50K...)"
                             />
+                            {promoInfo.message && (
+                                <p
+                                    className={`mt-1 text-xs ${
+                                        promoInfo.valid
+                                            ? "text-green-600"
+                                            : "text-red-500"
+                                    }`}
+                                >
+                                    {promoInfo.message}
+                                </p>
+                            )}
+                            {errors.promotionCode && (
+                                <p className="mt-1 text-xs text-red-500">
+                                    {errors.promotionCode}
+                                </p>
+                            )}
                         </div>
 
                         {/* Shipping method */}
@@ -370,18 +733,21 @@ const CheckoutPage = () => {
                     <h2 className="font-medium mb-4">Đơn hàng của bạn</h2>
 
                     <div className="space-y-2 text-sm">
-                        {items.map((item) => (
+                        {effectiveItems.map((item: any) => (
                             <div key={item.id} className="flex justify-between">
-                <span>
-                  {item.productName}{" "}
-                    <span className="text-gray-500">
-                    x{item.quantity}
-                  </span>
-                </span>
+                                <span>
+                                    {item.productName}{" "}
+                                    <span className="text-gray-500">
+                                        x{item.quantity}
+                                    </span>
+                                </span>
 
                                 <span>
-                  {formatPrice(item.productPrice * item.quantity)} đ
-                </span>
+                                    {formatPrice(
+                                        item.productPrice * item.quantity
+                                    )}{" "}
+                                    đ
+                                </span>
                             </div>
                         ))}
                     </div>
@@ -397,9 +763,16 @@ const CheckoutPage = () => {
                             <span>{formatPrice(shippingFee)} đ</span>
                         </div>
 
-                        <div className="flex justify-between font-semibold text-base pt-1">
+                        {discount > 0 && (
+                            <div className="flex justify-between text-green-700">
+                                <span>Giảm giá</span>
+                                <span>-{formatPrice(discount)} đ</span>
+                            </div>
+                        )}
+
+                        <div className="flex justify-between font-semibold text-base pt-1 border-t mt-2">
                             <span>Tổng cộng</span>
-                            <span>{formatPrice(total)} đ</span>
+                            <span>{formatPrice(finalTotal)} đ</span>
                         </div>
                     </div>
 
