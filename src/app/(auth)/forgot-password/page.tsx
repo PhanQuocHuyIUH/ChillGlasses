@@ -10,7 +10,7 @@ import { FaEye, FaEyeSlash, FaCheckCircle } from "react-icons/fa";
 import PasswordInput from "@/components/ui/PasswordInput";
 
 export default function ForgotPasswordPage() {
-  const [step, setStep] = useState(3);
+  const [step, setStep] = useState(1);
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [password, setPassword] = useState("");

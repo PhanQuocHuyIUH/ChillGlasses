@@ -44,6 +44,7 @@ import {
   Trash2,
   Image as ImageIcon,
 } from "lucide-react";
+import Image from "next/image";
 
 const AdminProductsPage = () => {
   // State management
@@ -447,10 +448,13 @@ const AdminProductsPage = () => {
                   <TableCell>{product.id}</TableCell>
                   <TableCell>
                     {product.primaryImageUrl ? (
-                      <img
+                      <Image
                         src={product.primaryImageUrl}
                         alt={product.name}
+                        width={64} 
+                        height={64} 
                         className="w-16 h-16 object-cover rounded-md border"
+                        unoptimized
                       />
                     ) : (
                       <div className="w-16 h-16 flex items-center justify-center bg-gray-200 text-gray-500 rounded-md border">
@@ -662,11 +666,15 @@ const AdminProductsPage = () => {
 
             {existingImages.map((img) => (
               <div key={img.id} className="relative">
-                <img
+                <Image
                   src={img.imageUrl}
                   className={`w-24 h-24 object-cover rounded border ${
                     img.isPrimary ? "ring-2 ring-blue-500" : ""
                   }`}
+                  width={96}
+                  height={96}
+                  alt={img.displayOrder.toString()}
+                  unoptimized
                 />
 
                 {/* DELETE */}
@@ -707,10 +715,14 @@ const AdminProductsPage = () => {
             <h3 className="font-semibold mb-2">Ảnh mới chọn</h3>
             <div className="grid grid-cols-4 gap-3">
               {previewUrls.map((url, index) => (
-                <img
+                <Image
                   key={index}
                   src={url}
                   className="w-full h-24 object-cover rounded border"
+                  alt=""
+                  width={500}
+                  height={96} 
+                  unoptimized
                 />
               ))}
             </div>

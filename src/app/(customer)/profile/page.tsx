@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { FiEye, FiEyeOff } from "react-icons/fi";
+import Image from "next/image";
 
 const API_BASE = "http://localhost:8080/api/user";
 
@@ -170,10 +171,13 @@ if (error) return <div className="text-center mt-10 text-red-500">{error}</div>;
 
 return ( <div className="container mx-auto bg-white shadow-md rounded-lg p-6 mt-8 mb-30"> <h1 className="text-4xl font-bold mb-4 text-center">USER PROFILE</h1>
 <div className="mb-6 flex flex-col items-center gap-4">
-  <img
+  <Image
     src={user?.avatar || "/default-avatar.png"}
     alt="Avatar"
+    width={128}
+    height={128}
     className="w-32 h-32 rounded-full object-cover border-2 border-gray-300"
+    unoptimized
   />
   <label className="cursor-pointer px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
     Chọn ảnh
@@ -234,6 +238,60 @@ return ( <div className="container mx-auto bg-white shadow-md rounded-lg p-6 mt-
         <option value="Khác">Other</option>
       </select>
     </div>
+
+    <div>
+      <label className="block text-sm font-medium">Birthday</label>
+      <div className="flex gap-3">
+        {/* Day */}
+        <select
+          value={birthday.day}
+          onChange={(e) =>
+            setBirthday((prev) => ({ ...prev, day: e.target.value }))
+          }
+          className="w-full border rounded px-3 py-2"
+        >
+          <option value="">Day</option>
+          {[...Array(31)].map((_, i) => (
+            <option key={i + 1} value={i + 1}>
+              {i + 1}
+            </option>
+          ))}
+        </select>
+
+        {/* Month */}
+        <select
+          value={birthday.month}
+          onChange={(e) =>
+            setBirthday((prev) => ({ ...prev, month: e.target.value }))
+          }
+          className="w-full border rounded px-3 py-2"
+        >
+          <option value="">Month</option>
+          {[...Array(12)].map((_, i) => (
+            <option key={i + 1} value={i + 1}>
+              {i + 1}
+            </option>
+          ))}
+        </select>
+
+        {/* Year */}
+        <select
+          value={birthday.year}
+          onChange={(e) =>
+            setBirthday((prev) => ({ ...prev, year: e.target.value }))
+          }
+          className="w-full border rounded px-3 py-2"
+        >
+          <option value="">Year</option>
+          {Array.from({ length: 100 }, (_, i) => 2025 - i).map((y) => (
+            <option key={y} value={y}>
+              {y}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+
 
     <div>
       <label className="block text-sm font-medium">Recovery Email</label>

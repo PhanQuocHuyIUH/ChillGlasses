@@ -13,24 +13,22 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // Check if user is logged in by checking token in localStorage
-        const token = localStorage.getItem("token");
-        const role = localStorage.getItem("role");
+        // 🔥 LẤY TỪ sessionStorage
+        const token = sessionStorage.getItem("token");
+        const role = sessionStorage.getItem("role");
 
         if (!token) {
-          // No token, redirect to login
           router.push("/login");
           return;
         }
 
         if (role !== "ADMIN") {
-          // User is not admin, redirect to customer page
           alert("Bạn không có quyền truy cập trang Admin!");
           router.push("/");
           return;
         }
 
-        // Verify token with backend
+        // Gọi API verify token
         const response = await fetch("http://localhost:8080/api/user/profile", {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -38,9 +36,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         });
 
         if (!response.ok) {
-          // Token invalid or expired
-          localStorage.removeItem("token");
-          localStorage.removeItem("role");
+          sessionStorage.removeItem("token");
+          sessionStorage.removeItem("role");
           router.push("/login");
           return;
         }
@@ -54,12 +51,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           return;
         }
 
-        // User is authenticated and has ADMIN role
         setIsAuthenticated(true);
       } catch (error) {
         console.error("Error checking auth:", error);
-        localStorage.removeItem("token");
-        localStorage.removeItem("role");
+        sessionStorage.removeItem("token");
+        sessionStorage.removeItem("role");
         router.push("/login");
       } finally {
         setIsLoading(false);
@@ -80,9 +76,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!isAuthenticated) {
-    return null; // Will redirect
-  }
+  if (!isAuthenticated) return null;
 
   return (
     <div className="min-h-screen bg-gray-50">
