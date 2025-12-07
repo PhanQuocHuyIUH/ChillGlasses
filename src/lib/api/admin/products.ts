@@ -13,27 +13,18 @@ export interface GetProductsParams
   extends Omit<PaginationParams, "sortDir">,
     ProductFilterRequest {}
 
-/**
- * Admin Product API Service
- * Handles all product management operations
- */
 const adminProductApi = {
-  /**
-   * Get all products with filters
-   * GET /api/products
-   */
+  // =====================================
+  // PRODUCT CRUD
+  // =====================================
+
   getAllProducts: async (params: GetProductsParams = {}) => {
-    const response = await axiosClient.get<ApiResponse<PageResponse<Product>>>(
-      "/products",
-      { params }
-    );
+    const response = await axiosClient.get<
+      ApiResponse<PageResponse<Product>>
+    >("/products", { params });
     return response.data;
   },
 
-  /**
-   * Get product by ID
-   * GET /api/products/{id}
-   */
   getProductById: async (id: number) => {
     const response = await axiosClient.get<ApiResponse<Product>>(
       `/products/${id}`
@@ -41,10 +32,6 @@ const adminProductApi = {
     return response.data;
   },
 
-  /**
-   * Create new product (Admin only)
-   * POST /api/products
-   */
   createProduct: async (data: CreateProductRequest) => {
     const response = await axiosClient.post<ApiResponse<Product>>(
       "/products",
@@ -53,10 +40,6 @@ const adminProductApi = {
     return response.data;
   },
 
-  /**
-   * Update product (Admin only)
-   * PUT /api/products/{id}
-   */
   updateProduct: async (id: number, data: UpdateProductRequest) => {
     const response = await axiosClient.put<ApiResponse<Product>>(
       `/products/${id}`,
@@ -65,10 +48,6 @@ const adminProductApi = {
     return response.data;
   },
 
-  /**
-   * Delete product (Admin only)
-   * DELETE /api/products/{id}
-   */
   deleteProduct: async (id: number) => {
     const response = await axiosClient.delete<ApiResponse<void>>(
       `/products/${id}`
@@ -76,10 +55,6 @@ const adminProductApi = {
     return response.data;
   },
 
-  /**
-   * Activate product (Admin only)
-   * PATCH /api/products/{id}/activate
-   */
   activateProduct: async (id: number) => {
     const response = await axiosClient.patch<ApiResponse<Product>>(
       `/products/${id}/activate`
@@ -87,10 +62,6 @@ const adminProductApi = {
     return response.data;
   },
 
-  /**
-   * Deactivate product (Admin only)
-   * PATCH /api/products/{id}/deactivate
-   */
   deactivateProduct: async (id: number) => {
     const response = await axiosClient.patch<ApiResponse<Product>>(
       `/products/${id}/deactivate`
@@ -98,48 +69,104 @@ const adminProductApi = {
     return response.data;
   },
 
+  // =====================================
+  // PRODUCT IMAGES
+  // =====================================
+
   /**
-   * Upload product images (Admin only)
-   * POST /api/products/{id}/images
+   * Upload images → Cloudinary
+   * Save URLs → ProductImageController
    */
   uploadProductImages: async (productId: number, files: File[]) => {
+    // 1. Upload images → /api/images/upload-multiple
     const formData = new FormData();
-    files.forEach((file) => {
-      formData.append("files", file);
-    });
+    files.forEach((file) => formData.append("files", file));
 
-    const response = await axiosClient.post<ApiResponse<Product>>(
-      `/products/${productId}/images`,
+    const uploadRes = await axiosClient.post(
+      `/images/upload-multiple`,
       formData,
       {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       }
     );
-    return response.data;
+
+    if (!uploadRes.data.success) {
+      throw new Error("Upload images failed");
+    }
+
+    const imageUrls: string[] = uploadRes.data.imageUrls || [];
+
+    // 2. Save each image to product
+    const saveRequests = imageUrls.map((url) =>
+      axiosClient.post(`/products/${productId}/images`, null, {
+        params: {
+          imageUrl: url,
+          isPrimary: true,
+        },
+      })
+    );
+
+    await Promise.all(saveRequests);
+
+    return { success: true, imageUrls };
   },
 
   /**
-   * Delete product image (Admin only)
-   * DELETE /api/products/images/{imageId}
+   * Get all product images
+   * GET /api/products/{id}/images
+   */
+  getProductImages: async (productId: number) => {
+    return (
+      await axiosClient.get(`/products/${productId}/images`)
+    ).data;
+  },
+
+  /**
+   * Delete image from product (not Cloudinary)
+   * DELETE /api/products/images/{id}
    */
   deleteProductImage: async (imageId: number) => {
-    const response = await axiosClient.delete<ApiResponse<void>>(
-      `/products/images/${imageId}`
-    );
-    return response.data;
+    return (
+      await axiosClient.delete(`/products/images/${imageId}`)
+    ).data;
   },
 
   /**
-   * Set primary product image (Admin only)
-   * PATCH /api/products/images/{imageId}/primary
+   * Set image primary
+   * PUT /api/products/images/{imageId}/set-primary
    */
   setPrimaryImage: async (imageId: number) => {
-    const response = await axiosClient.patch<ApiResponse<void>>(
-      `/products/images/${imageId}/primary`
-    );
-    return response.data;
+    return (
+      await axiosClient.put(
+        `/products/images/${imageId}/set-primary`
+      )
+    ).data;
+  },
+
+  /**
+   * Change display order
+   * PUT /api/products/images/{imageId}/display-order
+   */
+  updateDisplayOrder: async (imageId: number, order: number) => {
+    return (
+      await axiosClient.put(
+        `/products/images/${imageId}/display-order`,
+        null,
+        { params: { displayOrder: order } }
+      )
+    ).data;
+  },
+
+  /**
+   * Delete image from Cloudinary
+   * DELETE /api/images?url=...
+   */
+  deleteCloudImage: async (imageUrl: string) => {
+    return (
+      await axiosClient.delete(`/images`, {
+        params: { url: imageUrl },
+      })
+    ).data;
   },
 };
 

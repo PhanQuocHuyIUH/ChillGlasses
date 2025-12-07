@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Product } from "@/types/product";
 import { getProductsByCategory } from "@/lib/api/products";
 
-const CATEGORY_ID = 1; // Gọng kính cận
+const CATEGORY_ID = 1;
 
 export default function GongKinhCanPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -53,6 +53,7 @@ export default function GongKinhCanPage() {
               width={200}
               height={200}
               className="w-full h-40 object-cover rounded"
+              unoptimized
             />
 
             <h2 className="font-bold mt-2">{product.name}</h2>
