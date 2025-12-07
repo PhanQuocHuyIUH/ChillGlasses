@@ -17,12 +17,20 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleGoogleLogin = async () => {
+  const [tempToken, setTempToken] = useState("");
+  const [otp, setOtp] = useState("");
+
+  const [loadingOtp, setLoadingOtp] = useState(false);
+
+
+
+const handleGoogleLogin = async () => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
     if (!credential?.idToken) throw new Error("No ID token");
 
+    // Gửi token Google lên server để xác thực
     const res = await fetch("http://localhost:8080/api/auth/google", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -30,23 +38,41 @@ export default function LoginPage() {
     });
 
     const data = await res.json();
-    if (!res.ok || !data?.data?.accessToken) throw new Error("Google login failed");
+    if (!res.ok || !data?.data?.accessToken)
+      throw new Error("Google login failed");
 
     const token = data.data.accessToken;
     const user = data.data.user;
-    
-    localStorage.setItem("token", token);
-    localStorage.setItem("role", user.role);
 
-    document.cookie = `token=${token}; path=/;`;
-    document.cookie = `role=${user.role}; path=/;`;
-
-    // Redirect based on role
-    if (user.role === "ADMIN") {
-      window.location.href = "/admin_dashboard";
-    } else {
+    // Nếu KHÔNG phải admin → login thẳng
+    if (user.role !== "ADMIN") {
+      localStorage.setItem("token", token);
+      localStorage.setItem("role", user.role);
+      document.cookie = `token=${token}; path=/;`;
+      document.cookie = `role=${user.role}; path=/;`;
       window.location.href = "/";
+      return;
     }
+    setLoadingOtp(true);
+    // Nếu là ADMIN → yêu cầu xác minh OTP
+    const sendOtpRes = await fetch(
+      `http://localhost:8080/api/password/send-otp?email=${encodeURIComponent(
+        user.email
+      )}`,
+      { method: "POST" }
+    );
+    setLoadingOtp(false);
+
+    if (!sendOtpRes.ok) {
+      alert("Không thể gửi OTP. Hãy thử lại.");
+      return;
+    }
+
+    // Lưu token tạm để dùng sau khi xác minh
+    setTempToken(token);
+    setUsername(user.email); // lưu email để verify OTP
+    setStep(2); // chuyển sang nhập OTP
+
   } catch (err) {
     console.error(err);
     alert("Google login failed: " + (err as Error).message);
@@ -56,56 +82,98 @@ export default function LoginPage() {
 
 
   const handleLogin = async () => {
-    if (!username.trim() || !password.trim()) {
-      setError("Vui lòng nhập đầy đủ thông tin");
+  if (!username.trim() || !password.trim()) {
+    setError("Vui lòng nhập đầy đủ thông tin");
+    return;
+  }
+
+  try {
+    const res = await fetch("http://localhost:8080/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: username, password }),
+    });
+
+    if (!res.ok) {
+      const errData = await res.json();
+      setError(errData.message || "Đăng nhập thất bại");
       return;
     }
 
-    try {
-      const res = await fetch("http://localhost:8080/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: username, password }),
-      });
+    const data = await res.json();
+    const token = data.data.accessToken;
 
-      if (!res.ok) {
-        const errData = await res.json();
-        setError(errData.message || "Đăng nhập thất bại");
-        return;
-      }
+    // Lấy thông tin user
+    const resMe = await fetch("http://localhost:8080/api/user/profile", {
+      headers: { Authorization: "Bearer " + token },
+    });
 
-      const data = await res.json();
-      const token = data.data.accessToken;
-      localStorage.setItem("token", token);
-
-      document.cookie = `token=${token}; path=/;`;
-
-      const resMe = await fetch("http://localhost:8080/api/user/profile", {
-        headers: { Authorization: "Bearer " + token }
-      });
-
-      if (!resMe.ok) {
-        setError("Không thể lấy thông tin người dùng");
-        return;
-      }
-
-      const meData = await resMe.json();
-      const me = meData.data;
-
-      localStorage.setItem("role", me.role);
-      document.cookie = `role=${me.role}; path=/;`;
-
-      // Redirect based on role
-      if (me.role === "ADMIN") {
-        window.location.href = "/admin_dashboard";
-      } else {
-        window.location.href = "/";
-      }
-    } catch (err) {
-      console.error(err);
-      setError("Không thể kết nối server");
+    if (!resMe.ok) {
+      setError("Không thể lấy thông tin người dùng");
+      return;
     }
-  };
+
+    const meData = await resMe.json();
+    const me = meData.data;
+
+    // ⛔ CUSTOMER → login bình thường
+    if (me.role !== "ADMIN") {
+      localStorage.setItem("token", token);
+      localStorage.setItem("role", me.role);
+      window.location.href = "/";
+      return;
+    }
+    setLoadingOtp(true);
+    // ✅ ADMIN → gửi OTP trước khi cho login
+    const sendOtpRes = await fetch(
+      `http://localhost:8080/api/password/send-otp?email=${encodeURIComponent(me.email)}`,
+      { method: "POST" }
+    );
+    setLoadingOtp(false);
+
+
+    if (!sendOtpRes.ok) {
+      setError("Không thể gửi OTP xác minh cho admin");
+      return;
+    }
+
+    // Lưu token tạm
+    setTempToken(token);
+
+    // Chuyển qua bước nhập OTP
+    setStep(2);
+
+  } catch (err) {
+    console.error(err);
+    setError("Không thể kết nối server");
+  }
+};
+const handleVerifyOtp = async () => {
+  try {
+    const res = await fetch(
+      `http://localhost:8080/api/password/verify-otp?email=${encodeURIComponent(username)}&otp=${encodeURIComponent(otp)}`,
+      { method: "POST" }
+    );
+
+    if (!res.ok) {
+      setError("OTP không hợp lệ hoặc đã hết hạn");
+      return;
+    }
+
+    // OTP đúng → dùng token tạm để đăng nhập
+    sessionStorage.setItem("token", tempToken);
+    sessionStorage.setItem("role", "ADMIN");
+
+    document.cookie = `token=${tempToken}; path=/;`;
+    document.cookie = `role=ADMIN; path=/;`;
+
+    window.location.href = "/admin_dashboard";
+  } catch (error) {
+    setError("Xác minh OTP thất bại");
+  }
+};
+
+
 
 
   return (
@@ -135,6 +203,11 @@ export default function LoginPage() {
               </h1>
 
               <div className="space-y-4 mt-6">
+                {loadingOtp && (
+                  <div className="flex justify-center my-3">
+                    <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                )}
                 <AnimatePresence mode="wait">
 
                   {step === 1 && (
@@ -218,12 +291,13 @@ export default function LoginPage() {
                         type="text"
                         placeholder="Nhập mã OTP"
                         className="w-full"
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value)}
                     />
-                    <Link href="/">
-                      <Button className="w-full h-12 text-base font-medium bg-blue-600 text-white hover:bg-blue-700 cursor-pointer">
-                        Xác minh
+                    {error && <p className="text-red-600 text-sm">{error}</p>}
+                      <Button onClick={handleVerifyOtp} className="w-full h-12 text-base font-medium bg-blue-600 text-white hover:bg-blue-700 cursor-pointer">
+                        Xác minh OTP
                       </Button>
-                    </Link>  
                       <div className="text-center mt-2">
                         <button
                           className="text-sm text-blue-600 hover:underline font-medium cursor-pointer"

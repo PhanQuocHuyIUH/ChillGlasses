@@ -6,11 +6,9 @@ import axios, {
 import { getAuth } from "firebase/auth";
 import "@/lib/firebaseConfig";
 
-// Base API URL from environment variable
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
-// Create axios instance
 const axiosClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
@@ -19,26 +17,42 @@ const axiosClient: AxiosInstance = axios.create({
   },
 });
 
-// Request interceptor - Add auth token to requests
+// ----------------------
+// 🔐 GET TOKEN ƯU TIÊN
+// ----------------------
+const getStoredToken = () => {
+  if (typeof window === "undefined") return null;
+
+  // 1️⃣ Ưu tiên token ADMIN (sessionStorage)
+  const sessionToken = sessionStorage.getItem("token");
+  if (sessionToken) return sessionToken;
+
+  // 2️⃣ Token user thường (localStorage)
+  const localToken = localStorage.getItem("token");
+  if (localToken) return localToken;
+
+  // 3️⃣ Không có → trả null
+  return null;
+};
+
+// ----------------------
+// 📌 REQUEST INTERCEPTOR
+// ----------------------
 axiosClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     try {
-      // Try to get token from localStorage first (for backend JWT)
-      if (typeof window !== "undefined") {
-        const token = localStorage.getItem("token");
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-          return config;
-        }
+      const token = getStoredToken();
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+        return config;
       }
 
-      // Fallback to Firebase auth token (for Google login)
+      // Nếu không có token, fallback Firebase
       const auth = getAuth();
       const user = auth.currentUser;
-
       if (user) {
-        const token = await user.getIdToken();
-        config.headers.Authorization = `Bearer ${token}`;
+        const firebaseToken = await user.getIdToken();
+        config.headers.Authorization = `Bearer ${firebaseToken}`;
       }
     } catch (error) {
       console.error("Error getting auth token:", error);
@@ -46,65 +60,55 @@ axiosClient.interceptors.request.use(
 
     return config;
   },
-  (error: AxiosError) => {
-    return Promise.reject(error);
-  }
+  (error: AxiosError) => Promise.reject(error)
 );
 
-// Response interceptor - Handle errors globally
+// ----------------------
+// 📌 RESPONSE INTERCEPTOR
+// ----------------------
 axiosClient.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (res) => res,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
     };
 
-    // Handle 401 Unauthorized - Token expired
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
-        // Try Firebase token refresh first
         const auth = getAuth();
         const user = auth.currentUser;
 
         if (user) {
-          // Force refresh token
-          const token = await user.getIdToken(true);
-          originalRequest.headers.Authorization = `Bearer ${token}`;
+          const newToken = await user.getIdToken(true);
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
           return axiosClient(originalRequest);
         }
 
-        // If no Firebase user, clear localStorage and redirect
+        // Không có user Firebase → clear và logout
         if (typeof window !== "undefined") {
-          localStorage.removeItem("token");
-          localStorage.removeItem("role");
+          localStorage.clear();
+          sessionStorage.clear();
           window.location.href = "/login";
         }
-      } catch (refreshError) {
-        console.error("Error refreshing token:", refreshError);
-        // Redirect to login page
+      } catch (refreshErr) {
+        console.error("Token refresh failed", refreshErr);
+
         if (typeof window !== "undefined") {
-          localStorage.removeItem("token");
-          localStorage.removeItem("role");
+          localStorage.clear();
+          sessionStorage.clear();
           window.location.href = "/login";
         }
-        return Promise.reject(refreshError);
+
+        return Promise.reject(refreshErr);
       }
     }
 
-    // Handle other errors
-    const errorMessage =
-      error.response?.data || error.message || "An error occurred";
-    console.error("API Error:", errorMessage);
-
+    console.error("API Error:", error.response?.data || error.message);
     return Promise.reject(error);
   }
 );
 
 export default axiosClient;
-
-// Export types for better TypeScript support
 export type { AxiosError, AxiosResponse } from "axios";

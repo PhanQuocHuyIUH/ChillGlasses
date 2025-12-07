@@ -16,7 +16,7 @@ const AdminHeader = () => {
   useEffect(() => {
     const fetchAdmin = async () => {
       try {
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
         if (!token) return;
 
         const res = await fetch("http://localhost:8080/api/user/profile", {
@@ -39,7 +39,7 @@ const AdminHeader = () => {
 
   const handleLogout = () => {
     alert("Đăng xuất thành công!");
-    localStorage.removeItem("token");
+    sessionStorage.removeItem("token");
     router.push("/login");
   };
 

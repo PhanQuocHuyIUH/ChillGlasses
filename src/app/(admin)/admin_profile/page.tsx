@@ -24,7 +24,7 @@ export default function AdminProfile() {
   useEffect(() => {
     const fetchAdmin = async () => {
       try {
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
         if (!token) {
           setError("No token found");
           setLoading(false);
@@ -66,14 +66,14 @@ export default function AdminProfile() {
   // =====================
   const handleSave = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
 
       const body = {
         fullName: name,
         phone,
       };
 
-      const res = await fetch(`${API_BASE}/profile`, {
+      const res = await fetch(`http://localhost:8080/api/user/profile`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -99,13 +99,13 @@ export default function AdminProfile() {
   const handleAvatarChange = async (e: any) => {
     if (!e.target.files || e.target.files.length === 0) return;
 
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     const file = e.target.files[0];
     const formData = new FormData();
     formData.append("file", file);
 
     try {
-      const res = await fetch(`${API_BASE}/profile/avatar`, {
+      const res = await fetch(`http://localhost:8080/api/user/profile/avatar`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
