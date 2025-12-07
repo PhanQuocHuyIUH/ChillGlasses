@@ -42,6 +42,8 @@ const CANCEL_REASONS = [
     "Sai thông tin người nhận / địa chỉ / số điện thoại",
 ];
 
+const LOCAL_CANCEL_NOTES_KEY = "cancelNotes";
+
 const OrderDetailPage = () => {
     const params = useParams();
     const router = useRouter();
@@ -55,6 +57,35 @@ const OrderDetailPage = () => {
     const [cancelReasons, setCancelReasons] = useState<string[]>([]);
     const [otherReason, setOtherReason] = useState("");
     const [submittingCancel, setSubmittingCancel] = useState(false);
+
+    // 🧠 Helper: đọc lý do hủy từ localStorage (nếu có)
+    const getLocalCancelNote = (id: number): string | undefined => {
+        if (typeof window === "undefined") return undefined;
+        try {
+            const raw = localStorage.getItem(LOCAL_CANCEL_NOTES_KEY);
+            if (!raw) return undefined;
+
+            const parsed = JSON.parse(raw) as Record<string, string>;
+            const found = parsed[String(id)];
+            return typeof found === "string" ? found : undefined;
+        } catch (e) {
+            console.warn("Không đọc được cancelNotes từ localStorage:", e);
+            return undefined;
+        }
+    };
+
+    // 🧠 Helper: lưu lý do hủy vào localStorage
+    const saveLocalCancelNote = (id: number, note: string) => {
+        if (typeof window === "undefined") return;
+        try {
+            const raw = localStorage.getItem(LOCAL_CANCEL_NOTES_KEY);
+            const parsed = raw ? (JSON.parse(raw) as Record<string, string>) : {};
+            parsed[String(id)] = note;
+            localStorage.setItem(LOCAL_CANCEL_NOTES_KEY, JSON.stringify(parsed));
+        } catch (e) {
+            console.warn("Không lưu được cancelNotes vào localStorage:", e);
+        }
+    };
 
     useEffect(() => {
         if (!orderId) {
@@ -77,8 +108,23 @@ const OrderDetailPage = () => {
                 setLoading(true);
                 setError(null);
                 const data = await getOrderDetail(numericId);
+
                 if (!isMounted) return;
-                setOrder(data);
+
+                // Nếu đơn đã hủy mà notes từ BE trống → thử lấy từ localStorage
+                if (data.status === "CANCELLED" && !data.notes) {
+                    const localNote = getLocalCancelNote(data.id);
+                    setOrder(
+                        localNote
+                            ? {
+                                ...data,
+                                notes: localNote,
+                            }
+                            : data
+                    );
+                } else {
+                    setOrder(data);
+                }
             } catch (err) {
                 console.error("Lỗi load chi tiết đơn:", err);
                 if (!isMounted) return;
@@ -121,6 +167,9 @@ const OrderDetailPage = () => {
     const handleCloseCancelModal = () => {
         setShowCancelModal(false);
         setSubmittingCancel(false);
+        // Nếu muốn reset khi đóng popup:
+        // setCancelReasons([]);
+        // setOtherReason("");
     };
 
     const handleConfirmCancel = async () => {
@@ -131,36 +180,57 @@ const OrderDetailPage = () => {
             return;
         }
 
+        // 🧠 Gộp lý do lại thành 1 chuỗi rõ ràng để gán vào notes
+        const parts: string[] = [];
+
+        if (cancelReasons.length > 0) {
+            parts.push("Lý do đã chọn: " + cancelReasons.join(" | "));
+        }
+
+        if (otherReason.trim() !== "") {
+            parts.push("Lý do khác: " + otherReason.trim());
+        }
+
+        const cancelNote = "Lý do hủy đơn: " + parts.join(" || ");
+
         try {
             setSubmittingCancel(true);
 
-            // 🔗 Gửi request lên backend (nếu BE chưa có endpoint này thì sẽ báo lỗi ở console)
             await requestCancelOrder(order.id, {
+                notes: cancelNote,
                 reasons: cancelReasons,
                 otherReason: otherReason.trim() || undefined,
             });
 
-            // 🟢 Cập nhật trạng thái ngay trên UI cho user thấy phản hồi
+            // Lưu vào localStorage để lần sau mở lại vẫn thấy
+            saveLocalCancelNote(order.id, cancelNote);
+
+            // Cập nhật UI
             setOrder((prev) =>
-                prev ? { ...prev, status: "CANCELLED" as OrderStatus } : prev
+                prev
+                    ? {
+                        ...prev,
+                        status: "CANCELLED" as OrderStatus,
+                        notes: cancelNote,
+                    }
+                    : prev
             );
 
-            alert("Yêu cầu hủy đơn của bạn đã được ghi nhận.");
+            alert(
+                "Đơn hàng đã được hủy. Cảm ơn bạn đã cho chúng tôi biết lý do."
+            );
 
             setShowCancelModal(false);
-            // Có thể ở lại trang chi tiết, hoặc quay về danh sách:
-            // router.push("/orders");
         } catch (err) {
             console.error("Lỗi khi gửi yêu cầu hủy đơn:", err);
-            alert("Không thể gửi yêu cầu hủy đơn. Vui lòng thử lại sau.");
+            alert("Không thể hủy đơn hàng. Vui lòng thử lại sau.");
         } finally {
             setSubmittingCancel(false);
         }
     };
 
-    const canRequestCancel =
-        order && (order.status === "PENDING");
-        // (order.status === "PENDING" || order.status === "PROCESSING");
+    // Chỉ cho hủy khi đơn đang PENDING
+    const canRequestCancel = order && order.status === "PENDING";
 
     if (loading) {
         return (
@@ -205,11 +275,11 @@ const OrderDetailPage = () => {
                     </div>
 
                     <div className="flex flex-col items-end gap-2">
-            <span
-                className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${statusBadgeClass[order.status]}`}
-            >
-              {statusLabel[order.status]}
-            </span>
+                        <span
+                            className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${statusBadgeClass[order.status]}`}
+                        >
+                            {statusLabel[order.status]}
+                        </span>
                         <button
                             type="button"
                             onClick={() => router.push("/orders")}
@@ -220,9 +290,21 @@ const OrderDetailPage = () => {
                     </div>
                 </div>
 
+                {/* Nếu là đơn đã hủy và có lý do hủy → show block nổi bật */}
+                {order.status === "CANCELLED" && order.notes && (
+                    <div className="bg-red-50 border border-red-200 text-red-800 text-sm px-4 py-3 rounded-lg">
+                        <p className="font-semibold mb-1">
+                            Lý do hủy đơn hàng:
+                        </p>
+                        <p>{order.notes}</p>
+                    </div>
+                )}
+
                 {/* Thông tin đơn hàng */}
                 <div className="bg-white shadow p-6 rounded-lg space-y-2">
-                    <h2 className="text-lg font-semibold mb-2">Thông tin đơn hàng</h2>
+                    <h2 className="text-lg font-semibold mb-2">
+                        Thông tin đơn hàng
+                    </h2>
                     <p>
                         <strong>Khách hàng:</strong> {order.userFullName}
                     </p>
@@ -230,21 +312,27 @@ const OrderDetailPage = () => {
                         <strong>Email:</strong> {order.userEmail}
                     </p>
                     <p>
-                        <strong>Địa chỉ giao hàng:</strong> {order.shippingAddress}
+                        <strong>Địa chỉ giao hàng:</strong>{" "}
+                        {order.shippingAddress}
                     </p>
                     <p>
-                        <strong>Phương thức giao hàng:</strong> {order.shippingMethod}
+                        <strong>Phương thức giao hàng:</strong>{" "}
+                        {order.shippingMethod}
                     </p>
                     <p>
                         <strong>Thanh toán:</strong> {order.paymentMethod} (
-                        {order.paymentStatus === "PAID" ? "Đã thanh toán" : "Chưa thanh toán"}
+                        {order.paymentStatus === "PAID"
+                            ? "Đã thanh toán"
+                            : "Chưa thanh toán"}
                         )
                     </p>
-                    {order.notes && (
-                        <p>
-                            <strong>Ghi chú:</strong> {order.notes}
-                        </p>
-                    )}
+                    {/* Giữ lại ghi chú gốc nếu có (ví dụ từ checkout) */}
+                    {order.notes &&
+                        order.status !== "CANCELLED" && (
+                            <p>
+                                <strong>Ghi chú:</strong> {order.notes}
+                            </p>
+                        )}
                 </div>
 
                 {/* Sản phẩm */}
@@ -275,12 +363,15 @@ const OrderDetailPage = () => {
                                     </div>
 
                                     <div className="flex-1">
-                                        <p className="font-semibold">{item.productName}</p>
+                                        <p className="font-semibold">
+                                            {item.productName}
+                                        </p>
                                         <p className="text-gray-500 text-xs">
                                             Mã sản phẩm: {item.productSlug}
                                         </p>
                                         <p className="text-gray-600 text-sm">
-                                            {item.formattedPrice} x {item.quantity}
+                                            {item.formattedPrice} x{" "}
+                                            {item.quantity}
                                         </p>
                                     </div>
 
@@ -326,8 +417,13 @@ const OrderDetailPage = () => {
                         </p>
                         <p>
                             Cần hỗ trợ, vui lòng liên hệ: Điện thoại:{" "}
-                            <span className="font-semibold">0123 456 789</span> hoặc Email:{" "}
-                            <span className="font-semibold">support@chillglasses.com</span>{" "}
+                            <span className="font-semibold">
+                                0123 456 789
+                            </span>{" "}
+                            hoặc Email:{" "}
+                            <span className="font-semibold">
+                                support@chillglasses.com
+                            </span>{" "}
                             (hỗ trợ 24/24).
                         </p>
                     </div>
@@ -350,13 +446,16 @@ const OrderDetailPage = () => {
                             Yêu cầu hủy đơn {order.orderCode}
                         </h2>
                         <p className="text-xs text-gray-500 mb-4">
-                            Vui lòng chọn lý do hủy đơn. Thông tin này giúp chúng tôi cải thiện
-                            dịch vụ tốt hơn.
+                            Vui lòng chọn lý do hủy đơn. Thông tin này giúp
+                            chúng tôi cải thiện dịch vụ tốt hơn.
                         </p>
 
                         <div className="space-y-2 mb-3 text-sm">
                             {CANCEL_REASONS.map((reason) => (
-                                <label key={reason} className="flex items-center gap-2">
+                                <label
+                                    key={reason}
+                                    className="flex items-center gap-2"
+                                >
                                     <input
                                         type="checkbox"
                                         checked={cancelReasons.includes(reason)}
@@ -373,7 +472,9 @@ const OrderDetailPage = () => {
                             </label>
                             <textarea
                                 value={otherReason}
-                                onChange={(e) => setOtherReason(e.target.value)}
+                                onChange={(e) =>
+                                    setOtherReason(e.target.value)
+                                }
                                 className="w-full border rounded px-3 py-2 text-sm min-h-[70px]"
                                 placeholder="Nhập thêm thông tin nếu bạn muốn..."
                             />
@@ -394,7 +495,9 @@ const OrderDetailPage = () => {
                                 className="px-4 py-2 rounded-lg bg-red-500 text-white font-semibold hover:bg-red-600 disabled:opacity-60"
                                 disabled={submittingCancel}
                             >
-                                {submittingCancel ? "Đang gửi..." : "Xác nhận hủy đơn"}
+                                {submittingCancel
+                                    ? "Đang gửi..."
+                                    : "Xác nhận hủy đơn"}
                             </button>
                         </div>
                     </div>

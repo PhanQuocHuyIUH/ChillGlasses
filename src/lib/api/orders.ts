@@ -92,30 +92,29 @@ export interface CreateOrderRequest {
     promotionCode?: string;
 }
 
-/** ===== API: TẠO ĐƠN HÀNG TỪ CART =====
- * POST /api/orders
- */
+/** ===== API: TẠO ĐƠN HÀNG TỪ CART ===== */
 export const createOrder = async (
     payload: CreateOrderRequest
 ): Promise<OrderDetail> => {
-    const res = await axiosClient.post<ApiResponse<OrderDetail>>("/orders", payload);
+    const res = await axiosClient.post<ApiResponse<OrderDetail>>(
+        "/orders",
+        payload
+    );
     return res.data.data;
 };
 
-/** ===== API: LẤY LIST ĐƠN HÀNG CỦA USER (PHÂN TRANG) =====
- * GET /api/orders/my-orders
- * BE trả về: ApiResponse<PageResponse<OrderSummary>>
- */
+/** ===== API: LẤY LIST ĐƠN HÀNG (MY ORDERS) ===== */
 export const getMyOrders = async (
     page = 0,
     size = 20
 ): Promise<OrderSummary[]> => {
-    const res = await axiosClient.get<ApiResponse<PageResponse<OrderSummary>>>(
-        "/orders/my-orders",
-        {
-            params: { page, size },
-        }
-    );
+    const res =
+        await axiosClient.get<ApiResponse<PageResponse<OrderSummary>>>(
+            "/orders/my-orders",
+            {
+                params: { page, size },
+            }
+        );
 
     const pageData = res.data.data;
     if (!pageData || !Array.isArray(pageData.content)) {
@@ -125,54 +124,52 @@ export const getMyOrders = async (
     return pageData.content;
 };
 
-/** ===== API: LẤY LIST ĐƠN THEO STATUS =====
- * GET /api/orders/my-orders/status/{status}
- * BE trả về: ApiResponse<OrderSummary[]>
- */
+/** ===== API: LẤY LIST ĐƠN THEO STATUS ===== */
 export const getMyOrdersByStatus = async (
     status: OrderStatus
 ): Promise<OrderSummary[]> => {
-    const res = await axiosClient.get<ApiResponse<OrderSummary[]>>(
-        `/orders/my-orders/status/${status}`
-    );
+    const res =
+        await axiosClient.get<ApiResponse<OrderSummary[]>>(
+            `/orders/my-orders/status/${status}`
+        );
     return Array.isArray(res.data.data) ? res.data.data : [];
 };
 
-/** ===== API: LẤY CHI TIẾT 1 ĐƠN =====
- * GET /api/orders/{id}
- */
-export const getOrderDetail = async (id: number): Promise<OrderDetail> => {
-    const res = await axiosClient.get<ApiResponse<OrderDetail>>(`/orders/${id}`);
+/** ===== API: LẤY CHI TIẾT 1 ĐƠN ===== */
+export const getOrderDetail = async (
+    id: number
+): Promise<OrderDetail> => {
+    const res =
+        await axiosClient.get<ApiResponse<OrderDetail>>(
+            `/orders/${id}`
+        );
     return res.data.data;
 };
 
-
-
-
-
-/** ===== API: YÊU CẦU HỦY ĐƠN HÀNG (PENDING/PROCESSING → CANCELLED) =====
- * Swagger: POST /api/orders/{id}/cancel
- * Hiện tại Swagger không mô tả request body → giả định BE không cần body.
+/** ===== API: YÊU CẦU HỦY ĐƠN HÀNG =====
+ * POST /api/orders/{id}/cancel
+ * Lưu ý: hiện tại BE có thể đang KHÔNG đọc body → notes sẽ không được lưu DB.
  */
 
 export interface CancelOrderPayload {
-    reasons: string[];
-    otherReason?: string;
+    notes?: string;          // Chuỗi lý do hủy đã gộp
+    reasons?: string[];      // Các lý do đã chọn
+    otherReason?: string;    // Lý do khác (raw)
 }
 
-// Để không phải sửa chỗ gọi, vẫn cho phép truyền payload nhưng tạm thời bỏ qua payload
 export const requestCancelOrder = async (
     orderId: number,
-    _payload?: CancelOrderPayload
-) => {
+    payload?: CancelOrderPayload
+): Promise<OrderDetail> => {
     try {
         const res = await axiosClient.post<ApiResponse<OrderDetail>>(
-            `/orders/${orderId}/cancel`
+            `/orders/${orderId}/cancel`,
+            payload ?? {}
         );
 
         return res.data.data;
     } catch (error: any) {
-        console.error("API Error:", error?.response?.data || error);
+        console.error("API Error hủy đơn:", error?.response?.data || error);
         const messageFromServer = error?.response?.data?.message;
 
         throw new Error(
@@ -180,4 +177,3 @@ export const requestCancelOrder = async (
         );
     }
 };
-
