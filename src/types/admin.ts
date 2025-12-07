@@ -87,6 +87,7 @@ export interface Product {
   images?: ProductImage[];
   createdAt: string;
   updatedAt: string;
+  primaryImageUrl: string;
 }
 
 export interface ProductImage {
