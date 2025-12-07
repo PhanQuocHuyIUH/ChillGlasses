@@ -7,6 +7,7 @@ import {
   CreateProductRequest,
   UpdateProductRequest,
   Category,
+  ProductImage,
 } from "@/types/admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,9 +42,9 @@ import {
   Plus,
   Edit,
   Trash2,
-  Search,
   Image as ImageIcon,
 } from "lucide-react";
+import Image from "next/image";
 
 const AdminProductsPage = () => {
   // State management
@@ -75,11 +76,10 @@ const AdminProductsPage = () => {
     sortDir: "desc" as "asc" | "desc",
   });
 
+  // Product modal + image management state
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editingProductId, setEditingProductId] = useState<
-    number | undefined
-  >();
+  const [editingProductId, setEditingProductId] = useState<number | undefined>();
   const [currentProduct, setCurrentProduct] = useState<CreateProductRequest>({
     name: "",
     description: "",
@@ -89,16 +89,43 @@ const AdminProductsPage = () => {
     brand: "",
   });
 
+  // Images state for modal
+  const [existingImages, setExistingImages] = useState<ProductImage[]>([]);
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+
   // Fetch data on mount
   useEffect(() => {
     fetchCategories();
     fetchProducts();
   }, []);
+  useEffect(() => {
+    if (isEditing && editingProductId) {
+      const fetchImages = async () => {
+        try {
+          const res = await adminProductApi.getProductImages(editingProductId);
+          setExistingImages(res.data); // existingImages là ProductImage[]
+        } catch (err) {
+          console.error("Error fetching images:", err);
+        }
+      };
+      fetchImages();
+    }
+  }, [isEditing, editingProductId]);
+
 
   // Fetch products when filters change
   useEffect(() => {
     fetchProducts();
   }, [filters]);
+
+  // Cleanup object URLs on unmount or when previews change
+  useEffect(() => {
+    return () => {
+      previewUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fetch all categories for dropdown
   const fetchCategories = async () => {
@@ -170,10 +197,13 @@ const AdminProductsPage = () => {
     });
     setIsEditing(false);
     setEditingProductId(undefined);
+    setExistingImages([]);
+    setSelectedImages([]);
+    setPreviewUrls([]);
     setShowModal(true);
   };
 
-  // Open edit product modal
+  // Open edit product modal (load existing images)
   const handleEditProduct = (product: Product) => {
     setCurrentProduct({
       name: product.name,
@@ -185,10 +215,15 @@ const AdminProductsPage = () => {
     });
     setIsEditing(true);
     setEditingProductId(product.id);
+    setExistingImages(product.images ? [...product.images] : []);
+    setSelectedImages([]);
+    // clear previous previews
+    previewUrls.forEach((u) => URL.revokeObjectURL(u));
+    setPreviewUrls([]);
     setShowModal(true);
   };
 
-  // Save product (create or update)
+  // Save product (create or update) and handle image upload
   const handleSaveProduct = async () => {
     // Validation
     if (!currentProduct.name || currentProduct.name.trim() === "") {
@@ -210,18 +245,32 @@ const AdminProductsPage = () => {
 
     setActionLoading(isEditing ? editingProductId! : -1);
     try {
+      let productId: number | undefined = editingProductId;
+
       if (isEditing && editingProductId) {
         // Update product
         const updateData: UpdateProductRequest = { ...currentProduct };
         await adminProductApi.updateProduct(editingProductId, updateData);
-        alert("Cập nhật sản phẩm thành công!");
+        productId = editingProductId;
       } else {
         // Create product
-        await adminProductApi.createProduct(currentProduct);
-        alert("Thêm sản phẩm thành công!");
+        const res = await adminProductApi.createProduct(currentProduct);
+        // res is ApiResponse<Product> so actual product is res.data
+        productId = res.data?.id;
       }
+
+      // Upload images if selected
+      if (selectedImages.length > 0 && productId) {
+        await adminProductApi.uploadProductImages(productId, selectedImages);
+      }
+
+      alert("Lưu sản phẩm thành công!");
       await fetchProducts();
       setShowModal(false);
+      setExistingImages([]);
+      setSelectedImages([]);
+      previewUrls.forEach((u) => URL.revokeObjectURL(u));
+      setPreviewUrls([]);
     } catch (err: any) {
       console.error("Error saving product:", err);
       alert(err.response?.data?.message || "Failed to save product");
@@ -266,6 +315,46 @@ const AdminProductsPage = () => {
     }
   };
 
+  // Handle file input change (new images)
+  const handleSelectFiles = (files: FileList | null) => {
+    if (!files) return;
+    const arr = Array.from(files);
+    // revoke old previews
+    previewUrls.forEach((u) => URL.revokeObjectURL(u));
+    const urls = arr.map((f) => URL.createObjectURL(f));
+    setSelectedImages(arr);
+    setPreviewUrls(urls);
+  };
+
+  // Set image as primary
+  const handleSetPrimary = async (imageId: number) => {
+    if (!confirm("Bạn có muốn đặt ảnh này làm ảnh đại diện (primary)?")) return;
+    try {
+      await adminProductApi.setPrimaryImage(imageId);
+      // Update local existingImages state to reflect change (optimistic)
+      setExistingImages((prev) =>
+        prev.map((img) => ({ ...img, isPrimary: img.id === imageId }))
+      );
+      await fetchProducts();
+    } catch (err: any) {
+      console.error("Error setting primary image:", err);
+      alert(err.response?.data?.message || "Failed to set primary image");
+    }
+  };
+
+  // Delete an existing image
+  const handleDeleteImage = async (imageId: number) => {
+    if (!confirm("Bạn có chắc chắn muốn xóa hình này?")) return;
+    try {
+      await adminProductApi.deleteProductImage(imageId);
+      setExistingImages((prev) => prev.filter((img) => img.id !== imageId));
+      await fetchProducts();
+    } catch (err: any) {
+      console.error("Error deleting image:", err);
+      alert(err.response?.data?.message || "Failed to delete image");
+    }
+  };
+
   // Loading state
   if (loading && products.length === 0) {
     return (
@@ -300,12 +389,11 @@ const AdminProductsPage = () => {
     );
   }
 
+
   return (
     <>
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-center">
-          Quản Lý Sản Phẩm
-        </h1>
+        <h1 className="text-3xl font-bold mb-6 text-center">Quản Lý Sản Phẩm</h1>
 
         {/* Filters and Add Button */}
         <Card className="mb-6">
@@ -319,22 +407,18 @@ const AdminProductsPage = () => {
                   className="w-full"
                 />
               </div>
-              <Select
+              <select
+                className="border rounded px-2 py-1"
                 value={filters.categoryId?.toString() || "all"}
-                onValueChange={handleCategoryFilter}
+                onChange={(e) => handleCategoryFilter(e.target.value)}
               >
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Danh mục" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả danh mục</SelectItem>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id.toString()}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <option value="all">Tất cả danh mục</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id.toString()}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
               <Button onClick={handleAddProduct}>
                 <Plus className="w-4 h-4 mr-2" />
                 Thêm sản phẩm
@@ -349,6 +433,7 @@ const AdminProductsPage = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>ID</TableHead>
+                <TableHead>Ảnh</TableHead>
                 <TableHead>Tên sản phẩm</TableHead>
                 <TableHead>Danh mục</TableHead>
                 <TableHead>Giá</TableHead>
@@ -361,14 +446,31 @@ const AdminProductsPage = () => {
               {products.map((product) => (
                 <TableRow key={product.id}>
                   <TableCell>{product.id}</TableCell>
+                  <TableCell>
+                    {product.primaryImageUrl ? (
+                      <Image
+                        src={product.primaryImageUrl}
+                        alt={product.name}
+                        width={64} 
+                        height={64} 
+                        className="w-16 h-16 object-cover rounded-md border"
+                        unoptimized
+                      />
+                    ) : (
+                      <div className="w-16 h-16 flex items-center justify-center bg-gray-200 text-gray-500 rounded-md border">
+                        <ImageIcon className="w-6 h-6" />
+                      </div>
+                    )}
+                  </TableCell>
+
+
+
                   <TableCell className="font-medium">{product.name}</TableCell>
                   <TableCell>
                     {categories.find((c) => c.id === product.categoryId)
                       ?.name || "N/A"}
                   </TableCell>
-                  <TableCell>
-                    {product.price.toLocaleString("vi-VN")}đ
-                  </TableCell>
+                  <TableCell>{product.price.toLocaleString("vi-VN")}đ</TableCell>
                   <TableCell>
                     <Badge
                       variant={
@@ -383,9 +485,7 @@ const AdminProductsPage = () => {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      variant={product.isActive ? "success" : "destructive"}
-                    >
+                    <Badge variant={product.isActive ? "success" : "destructive"}>
                       {product.isActive ? "Active" : "Inactive"}
                     </Badge>
                   </TableCell>
@@ -393,9 +493,7 @@ const AdminProductsPage = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() =>
-                        handleToggleStatus(product.id, product.isActive)
-                      }
+                      onClick={() => handleToggleStatus(product.id, product.isActive)}
                       disabled={actionLoading === product.id}
                     >
                       {actionLoading === product.id ? (
@@ -437,18 +535,11 @@ const AdminProductsPage = () => {
         <div className="flex justify-between items-center mt-4">
           <p className="text-sm text-gray-600">
             Showing {pagination.page * pagination.size + 1} to{" "}
-            {Math.min(
-              (pagination.page + 1) * pagination.size,
-              pagination.totalElements
-            )}{" "}
+            {Math.min((pagination.page + 1) * pagination.size, pagination.totalElements)}{" "}
             of {pagination.totalElements} products
           </p>
           <div className="space-x-2">
-            <Button
-              variant="outline"
-              onClick={handlePrevPage}
-              disabled={pagination.page === 0}
-            >
+            <Button variant="outline" onClick={handlePrevPage} disabled={pagination.page === 0}>
               Previous
             </Button>
             <Button
@@ -462,142 +553,203 @@ const AdminProductsPage = () => {
         </div>
       </div>
 
-      {/* Product Modal */}
-      <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {isEditing ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm mới"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Tên sản phẩm *
-              </label>
-              <Input
-                type="text"
-                value={currentProduct.name}
-                onChange={(e) =>
-                  setCurrentProduct({ ...currentProduct, name: e.target.value })
-                }
-                placeholder="Nhập tên sản phẩm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Mô tả</label>
-              <Textarea
-                value={currentProduct.description}
-                onChange={(e) =>
-                  setCurrentProduct({
-                    ...currentProduct,
-                    description: e.target.value,
-                  })
-                }
-                placeholder="Nhập mô tả sản phẩm"
-                rows={3}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Danh mục *
-                </label>
-                <Select
-                  value={currentProduct.categoryId.toString()}
-                  onValueChange={(value) =>
-                    setCurrentProduct({
-                      ...currentProduct,
-                      categoryId: parseInt(value),
-                    })
-                  }
+      {/* -------------------- PRODUCT MODAL -------------------- */}
+<Dialog open={showModal} onOpenChange={setShowModal}>
+  <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+    <DialogHeader>
+      <DialogTitle>
+        {isEditing ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm"}
+      </DialogTitle>
+    </DialogHeader>
+
+    <div className="space-y-4">
+      {/* NAME */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Tên sản phẩm</label>
+        <Input
+          value={currentProduct.name}
+          onChange={(e) =>
+            setCurrentProduct({ ...currentProduct, name: e.target.value })
+          }
+        />
+      </div>
+      {/* brand */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Thương hiệu</label>
+        <Input
+          value={currentProduct.brand}
+          onChange={(e) =>
+            setCurrentProduct({ ...currentProduct, brand: e.target.value })
+          }
+        />
+      </div>
+
+      {/* PRICE */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Giá</label>
+        <Input
+          type="number"
+          value={currentProduct.price}
+          onChange={(e) =>
+            setCurrentProduct({
+              ...currentProduct,
+              price: parseFloat(e.target.value),
+            })
+          }
+        />
+      </div>
+
+      {/* STOCK */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Tồn kho</label>
+        <Input
+          type="number"
+          value={currentProduct.stockQuantity}
+          onChange={(e) =>
+            setCurrentProduct({
+              ...currentProduct,
+              stockQuantity: parseInt(e.target.value),
+            })
+          }
+        />
+      </div>
+
+      {/* CATEGORY */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Danh mục</label>
+
+        <Select
+          value={currentProduct.categoryId?.toString()}
+          onValueChange={(val) =>
+            setCurrentProduct({
+              ...currentProduct,
+              categoryId: parseInt(val),
+            })
+          }
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Chọn danh mục" />
+          </SelectTrigger>
+          <SelectContent>
+            {categories.map((cat) => (
+              <SelectItem key={cat.id} value={cat.id.toString()}>
+                {cat.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* DESCRIPTION */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Mô tả</label>
+        <Textarea
+          rows={4}
+          value={currentProduct.description}
+          onChange={(e) =>
+            setCurrentProduct({ ...currentProduct, description: e.target.value })
+          }
+        />
+      </div>
+
+      {/* ---------------- EXISTING IMAGES ---------------- */}
+      {isEditing && (
+        <div>
+          <label className="block text-sm font-medium mb-2">
+            Ảnh hiện có
+          </label>
+
+          <div className="flex flex-wrap gap-4">
+            {existingImages.length === 0 && (
+              <p className="text-gray-500">Không có hình</p>
+            )}
+
+            {existingImages.map((img) => (
+              <div key={img.id} className="relative">
+                <Image
+                  src={img.imageUrl}
+                  className={`w-24 h-24 object-cover rounded border ${
+                    img.isPrimary ? "ring-2 ring-blue-500" : ""
+                  }`}
+                  width={96}
+                  height={96}
+                  alt={img.displayOrder.toString()}
+                  unoptimized
+                />
+
+                {/* DELETE */}
+                <button
+                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-1"
+                  onClick={() => handleDeleteImage(img.id)}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Chọn danh mục" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id.toString()}>
-                        {cat.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  ✕
+                </button>
+
+                {/* SET PRIMARY */}
+                {!img.isPrimary && (
+                  <button
+                    className="mt-1 text-xs text-blue-600 underline"
+                    onClick={() => handleSetPrimary(img.id)}
+                  >
+                    Đặt làm chính
+                  </button>
+                )}
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Thương hiệu
-                </label>
-                <Input
-                  type="text"
-                  value={currentProduct.brand}
-                  onChange={(e) =>
-                    setCurrentProduct({
-                      ...currentProduct,
-                      brand: e.target.value,
-                    })
-                  }
-                  placeholder="Nhập thương hiệu"
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ---------------- UPLOAD NEW IMAGES ---------------- */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Ảnh mới</label>
+        <Input
+          type="file"
+          multiple
+          accept="image/*"
+          onChange={(e) => handleSelectFiles(e.target.files)}
+        />
+        {/* New Images Preview */}
+        {previewUrls.length > 0 && (
+          <div className="mt-4">
+            <h3 className="font-semibold mb-2">Ảnh mới chọn</h3>
+            <div className="grid grid-cols-4 gap-3">
+              {previewUrls.map((url, index) => (
+                <Image
+                  key={index}
+                  src={url}
+                  className="w-full h-24 object-cover rounded border"
+                  alt=""
+                  width={500}
+                  height={96} 
+                  unoptimized
                 />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Giá (VNĐ) *
-                </label>
-                <Input
-                  type="number"
-                  value={currentProduct.price}
-                  onChange={(e) =>
-                    setCurrentProduct({
-                      ...currentProduct,
-                      price: parseFloat(e.target.value),
-                    })
-                  }
-                  placeholder="Nhập giá"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Tồn kho *
-                </label>
-                <Input
-                  type="number"
-                  value={currentProduct.stockQuantity}
-                  onChange={(e) =>
-                    setCurrentProduct({
-                      ...currentProduct,
-                      stockQuantity: parseInt(e.target.value),
-                    })
-                  }
-                  placeholder="Nhập số lượng"
-                />
-              </div>
+              ))}
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowModal(false)}>
-              Hủy
-            </Button>
-            <Button
-              onClick={handleSaveProduct}
-              disabled={actionLoading !== null}
-            >
-              {actionLoading !== null ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Processing...
-                </>
-              ) : isEditing ? (
-                "Cập nhật"
-              ) : (
-                "Thêm"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        )}
+
+      </div>
+    </div>
+
+    {/* FOOTER */}
+    <DialogFooter>
+      <Button onClick={() => setShowModal(false)} variant="outline">
+        Hủy
+      </Button>
+
+      <Button onClick={handleSaveProduct} disabled={actionLoading !== null}>
+        {actionLoading !== null ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          "Lưu"
+        )}
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+
+
     </>
   );
 };

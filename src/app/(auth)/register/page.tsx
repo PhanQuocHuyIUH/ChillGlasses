@@ -41,30 +41,40 @@ export default function RegisterPage() {
 
   const validateStep1 = () => {
     const newErrors: any = {};
+
     if (!name.trim()) newErrors.name = "Họ và tên không được để trống";
+    else if (name.length < 2 || name.length > 255)
+      newErrors.name = "Họ và tên phải từ 2 đến 255 ký tự";
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
   const validateStep2 = () => {
-    const newErrors: any = {};
-    if (!day) newErrors.day = "Vui lòng chọn ngày";
-    if (!month) newErrors.month = "Vui lòng chọn tháng";
-    if (!year) newErrors.year = "Vui lòng chọn năm";
-    if (!gender) newErrors.gender = "Vui lòng chọn giới tính";
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-  const validateStep3 = () => {
+      const newErrors: any = {};
+      if (!day) newErrors.day = "Vui lòng chọn ngày";
+      if (!month) newErrors.month = "Vui lòng chọn tháng";
+      if (!year) newErrors.year = "Vui lòng chọn năm";
+      if (!gender) newErrors.gender = "Vui lòng chọn giới tính";
+      setErrors(newErrors);
+      return Object.keys(newErrors).length === 0;
+    };
+    const validateStep3 = () => {
     const newErrors: any = {};
 
+    // Email
     if (!email.trim()) newErrors.email = "Email không được để trống";
     else if (!/^\S+@\S+\.\S+$/.test(email))
       newErrors.email = "Email không hợp lệ";
     else if (existingEmails.includes(email))
       newErrors.email = "Email đã tồn tại";
 
-    if (!password) newErrors.password = "Mật khẩu không được để trống";
-    if (!confirmPassword)
+    // Password
+    if (!password.trim()) newErrors.password = "Mật khẩu không được để trống";
+    else if (password.length < 6 || password.length > 100)
+      newErrors.password = "Mật khẩu phải từ 6 đến 100 ký tự";
+
+    if (!confirmPassword.trim())
       newErrors.confirmPassword = "Vui lòng xác nhận mật khẩu";
     else if (password !== confirmPassword)
       newErrors.confirmPassword = "Mật khẩu không khớp";
@@ -73,12 +83,14 @@ export default function RegisterPage() {
     return Object.keys(newErrors).length === 0;
   };
 
+
   const validateStep4 = () => {
     const newErrors: any = {};
 
-    if (!phone.trim()) newErrors.phone = "Số điện thoại không được để trống";
-    if (!recoveryEmail.trim())
-      newErrors.recoveryEmail = "Email khôi phục không được để trống";
+    if (phone && phone.length > 20)
+    newErrors.phone = "Số điện thoại không được vượt quá 20 ký tự";
+    if (recoveryEmail && !/^\S+@\S+\.\S+$/.test(recoveryEmail))
+    newErrors.recoveryEmail = "Email khôi phục không hợp lệ";
     if (!address.trim()) newErrors.address = "Địa chỉ không được để trống";
 
     setErrors(newErrors);
@@ -126,7 +138,7 @@ export default function RegisterPage() {
     <div className="w-full h-screen flex items-center justify-center bg-amber-50 p-4">
       <AnimatePresence mode="wait">
         {step !== 5 && (
-          <Card className="w-full max-w-4xl rounded-3xl border-0 shadow-none bg-white flex overflow-hidden">
+          <div className="w-full max-w-6xl  rounded-3xl border-0 shadow-none bg-white flex overflow-hidden">
             <div className="w-1/2 bg-gray-50 p-10 flex flex-col justify-center">
               <AnimatePresence mode="wait">
                 {step === 1 && (
@@ -136,6 +148,7 @@ export default function RegisterPage() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -30 }}
                     transition={{ duration: 0.3 }}
+                    className="h-full"
                   >
                     <h2 className="text-3xl font-semibold">Tạo tài khoản</h2>
                     <p className="text-gray-600">
@@ -190,7 +203,7 @@ export default function RegisterPage() {
                 )}
               </AnimatePresence>
             </div>
-            <div className="w-1/2 p-10">
+            <div className="w-1/2 p-10 flex flex-col justify-center">
               <AnimatePresence mode="wait">
                 {step === 1 && (
                   <motion.div
@@ -450,7 +463,7 @@ export default function RegisterPage() {
                 )}
               </AnimatePresence>
             </div>
-          </Card>
+          </div>
         )}
         {step === 5 && (
           <motion.div
