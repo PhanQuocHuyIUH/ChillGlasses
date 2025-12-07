@@ -1,92 +1,83 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import Link from "next/link"; // Import Link từ next/link
-import product1 from "@/../public/images/product1.jpg";
-import product2 from "@/../public/images/product2.jpg";
-import product3 from "@/../public/images/product3.jpg";
-import product4 from "@/../public/images/product4.jpg";
-
-const allProducts = [
-  {
-    id: 1,
-    name: "Sản phẩm 1",
-    price: "500.000đ",
-    rating: 4.5,
-    image: product1,
-  },
-  {
-    id: 2,
-    name: "Sản phẩm 2",
-    price: "700.000đ",
-    rating: 4.0,
-    image: product2,
-  },
-  {
-    id: 3,
-    name: "Sản phẩm 3",
-    price: "1.000.000đ",
-    rating: 5.0,
-    image: product3,
-  },
-  {
-    id: 4,
-    name: "Sản phẩm 4",
-    price: "1.200.000đ",
-    rating: 3.5,
-    image: product4,
-  },
-  {
-    id: 5,
-    name: "Sản phẩm 5",
-    price: "800.000đ",
-    rating: 4.2,
-    image: product1,
-  },
-  {
-    id: 6,
-    name: "Sản phẩm 6",
-    price: "600.000đ",
-    rating: 4.8,
-    image: product2,
-  },
-];
+import Link from "next/link";
+import { getAllProducts } from "@/lib/api/products";
+import { Product } from "@/types/product";
 
 const ProductListingPage = () => {
-  const [visibleProducts, setVisibleProducts] = useState(4); // Số lượng sản phẩm hiển thị ban đầu
+  const [products, setProducts] = useState<Product[]>([]);
+  const [visibleProducts, setVisibleProducts] = useState(4);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Hàm xử lý khi nhấn nút Load More
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+
+        const res = await getAllProducts();
+
+        console.log("API RAW:", res);
+
+        // ✅ API trả về mảng → set trực tiếp
+        setProducts(Array.isArray(res) ? res : []);
+      } catch (err) {
+        console.error("Error fetching products:", err);
+        setError("Failed to load products. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
   const handleLoadMore = () => {
-    setVisibleProducts((prev) => prev + 2); // Hiển thị thêm 2 sản phẩm mỗi lần nhấn
+    setVisibleProducts((prev) => prev + 2);
   };
+
+  if (loading) {
+    return <div className="text-center py-8">Loading products...</div>;
+  }
+
+  if (error) {
+    return <div className="text-center py-8 text-red-500">{error}</div>;
+  }
 
   return (
     <div className="text-black container mx-auto py-8">
-      <h1 className="text-3xl font-bold text-center mb-8">DANH SÁCH SẢN PHẨM</h1>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {allProducts.slice(0, visibleProducts).map((product) => (
-          <Link
-            key={product.id}
-            href={`/products/${product.id}`} // Đường dẫn đến trang chi tiết sản phẩm
-            className="border rounded-lg p-4 shadow hover:shadow-lg transition-shadow block"
-          >
-            <div>
+      <h1 className="text-3xl font-bold text-center mb-8">
+        DANH SÁCH SẢN PHẨM
+      </h1>
+
+      {products.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {products.slice(0, visibleProducts).map((product) => (
+            <Link
+              key={product.id}
+              href={`/products/${product.id}`}
+              className="border rounded-lg p-4 shadow hover:shadow-lg transition-shadow block"
+            >
               <Image
-                src={product.image}
+                src={product.primaryImageUrl}
                 alt={product.name}
-                className="w-full h-40 object-cover rounded"
                 width={160}
                 height={160}
+                className="w-full h-40 object-cover rounded"
               />
+
               <h2 className="text-lg font-bold mt-4">{product.name}</h2>
-              <p className="text-gray-600 mt-2">Giá: {product.price}</p>
-              <p className="text-yellow-500 mt-2">Rating: {product.rating} ⭐</p>
-            </div>
-          </Link>
-        ))}
-      </div>
-      {visibleProducts < allProducts.length && (
+              <p className="text-gray-600">Giá: {product.price}</p>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-8">No products available.</div>
+      )}
+
+      {visibleProducts < products.length && (
         <div className="text-center mt-8">
           <button
             onClick={handleLoadMore}
