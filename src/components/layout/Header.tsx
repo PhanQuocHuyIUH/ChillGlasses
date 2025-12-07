@@ -21,6 +21,7 @@ const Header = () => {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (token) setIsLoggedIn(true);
   }, []);
 
@@ -59,21 +60,21 @@ const Header = () => {
         <nav>
           <ul className="hidden md:flex space-x-6">
             <li>
-              <Link href="/products">
+              <Link href="/products/gong-kinh-can">
                 <button className="hover:text-gray-500 font-bold px-4 py-2">
                   GỌNG KÍNH CẬN
                 </button>
               </Link>
             </li>
             <li>
-              <Link href="/products">
+              <Link href="/products/trong-doi-mau">
                 <button className="hover:text-gray-500 font-bold px-4 py-2">
                   TRÒNG ĐỔI MÀU
                 </button>
               </Link>
             </li>
             <li>
-              <Link href="/products">
+              <Link href="/products/kinh-ram">
                 <button className="hover:text-gray-500 font-bold px-4 py-2">
                   KÍNH RÂM
                 </button>
@@ -116,9 +117,10 @@ const Header = () => {
             </button>
           </div>
           {/* Shopping cart icon */}
-          <button className="text-gray-500 hover:text-black">
+          <Link href="/cart" className="text-gray-500 hover:text-black">
             <FaShoppingCart size={20} />
-          </button>
+          </Link>
+
           {/* Login/User icon */}
           {isLoggedIn ? (
             <Link href="/profile">

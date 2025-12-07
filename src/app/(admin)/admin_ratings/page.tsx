@@ -1,139 +1,383 @@
 "use client";
 
-import AdminHeader from "@/components/layout/AdminHeader";
-import SideBar from "@/components/layout/SideBar";
-import { useState } from "react";
-
-// Mock data for reviews (can be fetched from the ProductDetailPage)
-const allReviews = [
-  {
-    product: "Sản phẩm 1",
-    user: "Nguyễn Văn A",
-    content: "Sản phẩm rất đẹp và chất lượng. Tôi rất hài lòng!",
-    rating: 5,
-    status: "approved",
-  },
-  {
-    product: "Sản phẩm 1",
-    user: "Trần Thị B",
-    content: "Sản phẩm tốt nhưng giao hàng hơi chậm.",
-    rating: 4,
-    status: "approved",
-  },
-  {
-    product: "Sản phẩm 2",
-    user: "Lê Văn C",
-    content: "Thiết kế đẹp, nhưng hơi nặng.",
-    rating: 4,
-    status: "approved",
-  },
-  {
-    product: "Sản phẩm 2",
-    user: "Hoàng Thị D",
-    content: "Rất hài lòng với sản phẩm này!",
-    rating: 5,
-    status: "approved",
-  },
-  {
-    product: "Sản phẩm 3",
-    user: "Nguyễn Văn E",
-    content: "Chờ duyệt...",
-    rating: 3,
-    status: "pending",
-  },
-];
+import { useState, useEffect } from "react";
+import { adminReviewApi } from "@/lib/api/admin";
+import { Review, ReviewStatus } from "@/types/admin";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  AlertTriangle,
+  Loader2,
+  Star,
+  CheckCircle,
+  XCircle,
+  Trash2,
+} from "lucide-react";
 
 const RatingPage = () => {
-  const [reviews, setReviews] = useState(allReviews);
+  // State management
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
 
-  // Approve a review
-  const handleApprove = (index: number) => {
-    setReviews((prev) =>
-      prev.map((review, i) =>
-        i === index ? { ...review, status: "approved" } : review
-      )
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    page: 0,
+    size: 10,
+    totalElements: 0,
+    totalPages: 0,
+  });
+
+  // Filter state
+  const [filters, setFilters] = useState({
+    productId: undefined as number | undefined,
+    status: undefined as ReviewStatus | undefined,
+    rating: undefined as number | undefined,
+    page: 0,
+    size: 10,
+    sortBy: "createdAt",
+    sortDir: "DESC" as "ASC" | "DESC",
+  });
+
+  // Fetch reviews on mount and when filters change
+  useEffect(() => {
+    fetchReviews();
+  }, [filters]);
+
+  // Fetch reviews from API
+  const fetchReviews = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await adminReviewApi.getAllReviews(filters);
+      setReviews(response.data.content);
+      setPagination({
+        page: response.data.pageNumber,
+        size: response.data.pageSize,
+        totalElements: response.data.totalElements,
+        totalPages: response.data.totalPages,
+      });
+    } catch (err: any) {
+      console.error("Error fetching reviews:", err);
+      setError(err.response?.data?.message || "Failed to fetch reviews");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle search (search functionality removed as API doesn't support text search)
+  const handleSearch = (value: string) => {
+    // Note: API only supports productId and status filters
+    // Text search would need to be implemented on backend
+    setFilters({ ...filters, page: 0 });
+  };
+
+  // Handle status filter
+  const handleStatusFilter = (status: string) => {
+    setFilters({
+      ...filters,
+      status: status === "all" ? undefined : (status as ReviewStatus),
+      page: 0,
+    });
+  };
+
+  // Handle pagination
+  const handleNextPage = () => {
+    if (pagination.page < pagination.totalPages - 1) {
+      setFilters({ ...filters, page: filters.page + 1 });
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (pagination.page > 0) {
+      setFilters({ ...filters, page: filters.page - 1 });
+    }
+  };
+
+  // Approve review
+  const handleApprove = async (id: number) => {
+    setActionLoading(id);
+    try {
+      await adminReviewApi.approveReview(id);
+      await fetchReviews();
+      alert("Duyệt đánh giá thành công!");
+    } catch (err: any) {
+      console.error("Error approving review:", err);
+      alert(err.response?.data?.message || "Failed to approve review");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Reject review
+  const handleReject = async (id: number) => {
+    const reason = prompt("Nhập lý do từ chối:");
+    if (!reason) return;
+
+    setActionLoading(id);
+    try {
+      await adminReviewApi.rejectReview(id, reason);
+      await fetchReviews();
+      alert("Từ chối đánh giá thành công!");
+    } catch (err: any) {
+      console.error("Error rejecting review:", err);
+      alert(err.response?.data?.message || "Failed to reject review");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Delete review
+  const handleDelete = async (id: number) => {
+    if (!confirm("Bạn có chắc chắn muốn xóa đánh giá này?")) return;
+
+    setActionLoading(id);
+    try {
+      await adminReviewApi.deleteReview(id);
+      await fetchReviews();
+      alert("Xóa đánh giá thành công!");
+    } catch (err: any) {
+      console.error("Error deleting review:", err);
+      alert(err.response?.data?.message || "Failed to delete review");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Get status badge variant
+  const getStatusBadgeVariant = (status: ReviewStatus) => {
+    switch (status) {
+      case "PENDING":
+        return "warning";
+      case "APPROVED":
+        return "success";
+      case "REJECTED":
+        return "destructive";
+      default:
+        return "default";
+    }
+  };
+
+  // Get status display text
+  const getStatusText = (status: ReviewStatus) => {
+    const statusMap: Record<ReviewStatus, string> = {
+      PENDING: "Chờ duyệt",
+      APPROVED: "Đã duyệt",
+      REJECTED: "Đã từ chối",
+    };
+    return statusMap[status] || status;
+  };
+
+  // Render star rating
+  const renderStars = (rating: number) => {
+    return (
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`w-4 h-4 ${
+              star <= rating
+                ? "fill-yellow-400 text-yellow-400"
+                : "text-gray-300"
+            }`}
+          />
+        ))}
+        <span className="ml-1 text-sm font-medium">({rating})</span>
+      </div>
     );
   };
 
-  // Hide a review
-  const handleHide = (index: number) => {
-    setReviews((prev) =>
-      prev.map((review, i) =>
-        i === index ? { ...review, status: "hidden" } : review
-      )
+  // Loading state
+  if (loading && reviews.length === 0) {
+    return (
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <span className="ml-3 text-lg">Loading reviews...</span>
+        </div>
+      </div>
     );
-  };
+  }
 
-  // Delete a review
-  const handleDelete = (index: number) => {
-    setReviews((prev) => prev.filter((_, i) => i !== index));
-  };
+  // Error state
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto">
+        <Card className="max-w-2xl mx-auto mt-8">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-center text-red-600">
+              <AlertTriangle className="w-8 h-8 mr-3" />
+              <div>
+                <p className="text-lg font-semibold">Error loading reviews</p>
+                <p className="text-sm text-gray-600">{error}</p>
+              </div>
+            </div>
+            <Button onClick={fetchReviews} className="mt-4 w-full">
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <AdminHeader />
-      <div className="flex">
-        <SideBar /> {/* Sidebar with fixed width */}
-        <div className="flex-1 ml-64 p-8"> {/* Adjusted to take remaining space */}
-          <h1 className="text-4xl font-bold mb-8 text-center">Quản Lý Đánh Giá</h1>
-          <table className="w-full bg-white shadow-md rounded-lg border border-gray-300">
-            <thead className="bg-gray-200 border-b border-gray-300">
-              <tr>
-                <th className="text-left px-4 py-2 text-lg">Sản phẩm</th>
-                <th className="text-left px-4 py-2 text-lg">Người dùng</th>
-                <th className="text-left px-4 py-2 text-lg">Nội dung</th>
-                <th className="text-left px-4 py-2 text-lg">Số sao</th>
-                <th className="text-left px-4 py-2 text-lg">Trạng thái</th>
-                <th className="text-center px-4 py-2 text-lg">Hành động</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-300">
-              {reviews.map((review, index) => (
-                <tr
-                  key={index}
-                  className={`hover:bg-gray-100 ${
-                    review.status === "pending" ? "opacity-50" : ""
-                  }`}
-                >
-                  <td className="px-4 py-2">{review.product}</td>
-                  <td className="px-4 py-2">{review.user}</td>
-                  <td className="px-4 py-2">{review.content}</td>
-                  <td className="px-4 py-2">{review.rating} ⭐</td>
-                  <td className="px-4 py-2">
-                    {review.status === "approved"
-                      ? "Đã duyệt"
-                      : review.status === "pending"
-                      ? "Chờ duyệt"
-                      : "Đã ẩn"}
-                  </td>
-                  <td className="px-4 py-2 text-center">
-                    {review.status === "pending" && (
-                      <button
-                        onClick={() => handleApprove(index)}
-                        className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 mr-2"
+    <div className="max-w-7xl mx-auto">
+      <h1 className="text-3xl font-bold mb-6 text-center">Quản Lý Đánh Giá</h1>
+
+      {/* Filters */}
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="flex gap-4 items-center">
+            <div className="flex-1">
+              <Input
+                placeholder="Tìm kiếm (chức năng chưa hỗ trợ)..."
+                disabled
+                className="w-full"
+              />
+            </div>
+            <Select
+              value={filters.status || "all"}
+              onValueChange={handleStatusFilter}
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Trạng thái" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                <SelectItem value="PENDING">Chờ duyệt</SelectItem>
+                <SelectItem value="APPROVED">Đã duyệt</SelectItem>
+                <SelectItem value="REJECTED">Đã từ chối</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Reviews Table */}
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead>Sản phẩm</TableHead>
+              <TableHead>Người dùng</TableHead>
+              <TableHead>Nội dung</TableHead>
+              <TableHead>Đánh giá</TableHead>
+              <TableHead>Trạng thái</TableHead>
+              <TableHead className="text-center">Hành động</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {reviews.map((review) => (
+              <TableRow key={review.id}>
+                <TableCell>{review.id}</TableCell>
+                <TableCell className="font-medium max-w-[200px] truncate">
+                  {review.productName}
+                </TableCell>
+                <TableCell>{review.userName}</TableCell>
+                <TableCell className="max-w-[300px]">
+                  <p className="line-clamp-2">{review.comment}</p>
+                </TableCell>
+                <TableCell>{renderStars(review.rating)}</TableCell>
+                <TableCell>
+                  <Badge variant={getStatusBadgeVariant(review.status)}>
+                    {getStatusText(review.status)}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-center space-x-2">
+                  {review.status === "PENDING" && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleApprove(review.id)}
+                        disabled={actionLoading === review.id}
+                        className="text-green-600 hover:text-green-700"
                       >
-                        Duyệt
-                      </button>
-                    )}
-                    {review.status !== "hidden" && (
-                      <button
-                        onClick={() => handleHide(index)}
-                        className="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 mr-2"
+                        {actionLoading === review.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <CheckCircle className="w-4 h-4" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleReject(review.id)}
+                        disabled={actionLoading === review.id}
+                        className="text-yellow-600 hover:text-yellow-700"
                       >
-                        Ẩn
-                      </button>
+                        {actionLoading === review.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <XCircle className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </>
+                  )}
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleDelete(review.id)}
+                    disabled={actionLoading === review.id}
+                  >
+                    {actionLoading === review.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
                     )}
-                    <button
-                      onClick={() => handleDelete(index)}
-                      className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
-                    >
-                      Xóa
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
+
+      {/* Pagination */}
+      <div className="flex justify-between items-center mt-4">
+        <p className="text-sm text-gray-600">
+          Showing {pagination.page * pagination.size + 1} to{" "}
+          {Math.min(
+            (pagination.page + 1) * pagination.size,
+            pagination.totalElements
+          )}{" "}
+          of {pagination.totalElements} reviews
+        </p>
+        <div className="space-x-2">
+          <Button
+            variant="outline"
+            onClick={handlePrevPage}
+            disabled={pagination.page === 0}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleNextPage}
+            disabled={pagination.page >= pagination.totalPages - 1}
+          >
+            Next
+          </Button>
         </div>
       </div>
     </div>
