@@ -19,13 +19,18 @@ const ProductListingPage = () => {
 
         const res = await getAllProducts();
 
-        console.log("API RAW:", res);
+        console.log("API RAW products:", res);
 
-        // ✅ API trả về mảng → set trực tiếp
-        setProducts(Array.isArray(res) ? res : []);
+        // API trả về mảng → set trực tiếp
+        if (Array.isArray(res)) {
+          setProducts(res);
+        } else {
+          console.error("Unexpected product response:", res);
+          setProducts([]);
+        }
       } catch (err) {
         console.error("Error fetching products:", err);
-        setError("Failed to load products. Please try again later.");
+        setError("Không thể tải danh sách sản phẩm. Vui lòng thử lại sau.");
       } finally {
         setLoading(false);
       }
@@ -35,11 +40,11 @@ const ProductListingPage = () => {
   }, []);
 
   const handleLoadMore = () => {
-    setVisibleProducts((prev) => prev + 2);
+    setVisibleProducts((prev) => prev + 4);
   };
 
   if (loading) {
-    return <div className="text-center py-8">Loading products...</div>;
+    return <div className="text-center py-8">Đang tải sản phẩm...</div>;
   }
 
   if (error) {
@@ -47,47 +52,67 @@ const ProductListingPage = () => {
   }
 
   return (
-    <div className="text-black container mx-auto py-8">
-      <h1 className="text-3xl font-bold text-center mb-8">
-        DANH SÁCH SẢN PHẨM
-      </h1>
+      <div className="text-black container mx-auto py-8 pt-24">
+        <h1 className="text-3xl font-bold text-center mb-8">
+          DANH SÁCH SẢN PHẨM
+        </h1>
 
-      {products.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {products.slice(0, visibleProducts).map((product) => (
-            <Link
-              key={product.id}
-              href={`/products/${product.id}`}
-              className="border rounded-lg p-4 shadow hover:shadow-lg transition-shadow block"
-            >
-              <Image
-                src={product.primaryImageUrl}
-                alt={product.name}
-                width={160}
-                height={160}
-                className="w-full h-40 object-cover rounded"
-              />
+        {products.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {products.slice(0, visibleProducts).map((product) => {
+                const imageUrl =
+                    product.primaryImageUrl && product.primaryImageUrl.trim() !== ""
+                        ? product.primaryImageUrl
+                        : "/images/product1.jpg";
 
-              <h2 className="text-lg font-bold mt-4">{product.name}</h2>
-              <p className="text-gray-600">Giá: {product.price}</p>
-            </Link>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-8">No products available.</div>
-      )}
+                return (
+                    <Link
+                        key={product.id}
+                        href={`/products/${product.id}`}
+                        className="border rounded-lg p-4 shadow hover:shadow-lg transition-shadow block bg-white"
+                    >
+                      <div className="w-full h-40 relative mb-3">
+                        <Image
+                            src={imageUrl}
+                            alt={product.name}
+                            fill
+                            sizes="(max-width: 768px) 100vw, 25vw"
+                            className="object-cover rounded"
+                        />
+                      </div>
 
-      {visibleProducts < products.length && (
-        <div className="text-center mt-8">
-          <button
-            onClick={handleLoadMore}
-            className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600"
-          >
-            Load More
-          </button>
-        </div>
-      )}
-    </div>
+                      <h2 className="text-lg font-bold mt-1 line-clamp-2">
+                        {product.name}
+                      </h2>
+
+                      <p className="text-red-600 font-semibold mt-1">
+                        {product.formattedPrice || product.price.toLocaleString("vi-VN")} đ
+                      </p>
+
+                      {product.brand && (
+                          <p className="text-xs text-gray-500 mt-1 uppercase">
+                            {product.brand}
+                          </p>
+                      )}
+                    </Link>
+                );
+              })}
+            </div>
+        ) : (
+            <div className="text-center py-8">Hiện chưa có sản phẩm nào.</div>
+        )}
+
+        {visibleProducts < products.length && (
+            <div className="text-center mt-8">
+              <button
+                  onClick={handleLoadMore}
+                  className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600"
+              >
+                Xem thêm
+              </button>
+            </div>
+        )}
+      </div>
   );
 };
 

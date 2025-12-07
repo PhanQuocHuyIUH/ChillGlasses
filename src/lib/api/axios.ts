@@ -1,113 +1,76 @@
+// src/lib/api/axios.ts
 import axios, {
-  AxiosInstance,
-  AxiosError,
-  InternalAxiosRequestConfig,
+    AxiosInstance,
+    AxiosError,
+    InternalAxiosRequestConfig,
+    AxiosResponse,
 } from "axios";
-import { getAuth } from "firebase/auth";
-import "@/lib/firebaseConfig";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
+    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
 const axiosClient: AxiosInstance = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 30000,
-  headers: {
-    "Content-Type": "application/json",
-  },
+    baseURL: API_BASE_URL,
+    timeout: 30000,
+    headers: {
+        "Content-Type": "application/json",
+    },
 });
 
-// ----------------------
-// 🔐 GET TOKEN ƯU TIÊN
-// ----------------------
+/**
+ * Ưu tiên lấy token theo thứ tự:
+ * 1) sessionStorage.token  (có thể dùng cho admin)
+ * 2) localStorage.token    (flow cũ / các file khác đang dùng)
+ * 3) localStorage.accessToken (flow mới từ /auth/login)
+ */
 const getStoredToken = () => {
-  if (typeof window === "undefined") return null;
+    if (typeof window === "undefined") return null;
 
-  // 1️⃣ Ưu tiên token ADMIN (sessionStorage)
-  const sessionToken = sessionStorage.getItem("token");
-  if (sessionToken) return sessionToken;
+    const sessionToken = sessionStorage.getItem("token");
+    if (sessionToken) return sessionToken;
 
-  // 2️⃣ Token user thường (localStorage)
-  const localToken = localStorage.getItem("token");
-  if (localToken) return localToken;
+    const localToken = localStorage.getItem("token");
+    if (localToken) return localToken;
 
-  // 3️⃣ Không có → trả null
-  return null;
+    const accessToken = localStorage.getItem("accessToken");
+    if (accessToken) return accessToken;
+
+    return null;
 };
 
-// ----------------------
-// 📌 REQUEST INTERCEPTOR
-// ----------------------
+// 🔐 Gắn Authorization cho mọi request nếu có token
 axiosClient.interceptors.request.use(
-  async (config: InternalAxiosRequestConfig) => {
-    try {
-      const token = getStoredToken();
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+    (config: InternalAxiosRequestConfig) => {
+        try {
+            const token = getStoredToken();
+            if (token) {
+                config.headers = config.headers || {};
+                config.headers.Authorization = `Bearer ${token}`;
+            }
+        } catch (error) {
+            console.error("Error getting auth token:", error);
+        }
+
         return config;
-      }
-
-      // Nếu không có token, fallback Firebase
-      const auth = getAuth();
-      const user = auth.currentUser;
-      if (user) {
-        const firebaseToken = await user.getIdToken();
-        config.headers.Authorization = `Bearer ${firebaseToken}`;
-      }
-    } catch (error) {
-      console.error("Error getting auth token:", error);
-    }
-
-    return config;
-  },
-  (error: AxiosError) => Promise.reject(error)
+    },
+    (error: AxiosError) => Promise.reject(error)
 );
 
-// ----------------------
-// 📌 RESPONSE INTERCEPTOR
-// ----------------------
+// 📌 Log lỗi chung, có thể xử lý 401 nếu muốn
 axiosClient.interceptors.response.use(
-  (res) => res,
-  async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & {
-      _retry?: boolean;
-    };
+    (response: AxiosResponse) => response,
+    (error: AxiosError) => {
+        console.error("API Error:", error.response?.data || error.message);
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
+        // Nếu sau này muốn auto logout khi 401:
+        // if (error.response?.status === 401 && typeof window !== "undefined") {
+        //   localStorage.clear();
+        //   sessionStorage.clear();
+        //   window.location.href = "/login";
+        // }
 
-      try {
-        const auth = getAuth();
-        const user = auth.currentUser;
-
-        if (user) {
-          const newToken = await user.getIdToken(true);
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
-          return axiosClient(originalRequest);
-        }
-
-        // Không có user Firebase → clear và logout
-        if (typeof window !== "undefined") {
-          localStorage.clear();
-          sessionStorage.clear();
-          window.location.href = "/login";
-        }
-      } catch (refreshErr) {
-        console.error("Token refresh failed", refreshErr);
-
-        if (typeof window !== "undefined") {
-          localStorage.clear();
-          sessionStorage.clear();
-          window.location.href = "/login";
-        }
-
-        return Promise.reject(refreshErr);
-      }
+        return Promise.reject(error);
     }
-
-    console.error("API Error:", error.response?.data || error.message);
-    return Promise.reject(error);
-  }
 );
 
 export default axiosClient;
