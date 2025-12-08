@@ -172,10 +172,11 @@ export default function ProductDetailPage() {
       )
       : 0;
 
+  const primaryImage = product.images.find((image) => image.isPrimary);
   const imageUrl =
-      imageError || !product.primaryImageUrl
-          ? "/images/product1.jpg"
-          : product.primaryImageUrl;
+    imageError || !primaryImage?.imageUrl
+      ? "/images/product1.jpg"
+      : primaryImage.imageUrl;
 
   return (
       <div className="container mx-auto py-10 px-4 text-black">

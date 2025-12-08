@@ -23,10 +23,21 @@ export interface Product {
 
   isActive: boolean;
 
+  images: ProductImage[];
+
   primaryImageUrl: string;
 
-  createdAt: string; // or Date
+  createdAt: string;
 }
+
+export interface ProductImage {
+  imageUrl: string;
+  altText: string;
+  isPrimary: boolean;
+  displayOrder: number;
+}
+
+
 
 
 export interface ProductFilter {
