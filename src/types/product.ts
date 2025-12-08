@@ -37,10 +37,7 @@ export interface ProductImage {
   displayOrder: number;
 }
 
-
-
-
-export interface ProductFilter {
+export interface ProductFilterValues {
   categoryId?: number;
   brand?: string;
 
@@ -49,3 +46,4 @@ export interface ProductFilter {
 
   inStock?: boolean; // stockQuantity > 0
 }
+

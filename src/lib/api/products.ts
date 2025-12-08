@@ -6,23 +6,34 @@ import { Product, ProductFilter } from "@/types/product";
 // ==============================
 // Hàm này giúp tự động tìm mảng dữ liệu dù backend trả về định dạng nào
 const extractArrayData = (response: any): Product[] => {
-  const data = response;
+  if (!response) return [];
 
-  // 1. Nếu là mảng chuẩn -> trả về luôn
-  if (Array.isArray(data)) return data;
+  // 1. Nếu response = []
+  if (Array.isArray(response)) return response;
 
-  // 2. Nếu bọc trong 'content' 
-  if (data?.content && Array.isArray(data.content)) return data.content;
+  // 2. Nếu response.data = []
+  if (Array.isArray(response.data)) return response.data;
 
-  // 3. Nếu bọc trong 'data' 
-  if (data?.data && Array.isArray(data.data)) return data.data;
+  // 3. Nếu response.data.content = []
+  if (response.data?.content && Array.isArray(response.data.content)) {
+    return response.data.content;
+  }
 
-  // 4. Nếu bọc trong 'results'
-  if (data?.results && Array.isArray(data.results)) return data.results;
+  // 4. Nếu response.content = []
+  if (response.content && Array.isArray(response.content)) {
+    return response.content;
+  }
 
-  // Không tìm thấy mảng -> Trả về rỗng để không crash UI
+  // 5. Nếu backend trả kiểu pagination:
+  // { data: { items: [...] } }
+  if (response.data?.items && Array.isArray(response.data.items)) {
+    return response.data.items;
+  }
+
+  // 6. Không khớp → return rỗng
   return [];
 };
+
 
 // ==============================
 // GET ALL PRODUCTS

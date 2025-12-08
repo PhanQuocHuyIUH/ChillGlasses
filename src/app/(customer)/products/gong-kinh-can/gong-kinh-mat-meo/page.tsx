@@ -10,6 +10,7 @@ const CATEGORY_ID = 4; // Gọng kính mắt mèo
 
 export default function GongKinhMatMeoPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [visibleProducts, setVisibleProducts] = useState(8); // Number of products to display initially
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -22,7 +23,7 @@ export default function GongKinhMatMeoPage() {
           setProducts(data);
         } else {
           console.error("Dữ liệu không phải là mảng:", data);
-          setProducts([]); // Fallback về mảng rỗng để không lỗi giao diện
+          setProducts([]);
         }
       } catch (err) {
         console.error("Load failed:", err);
@@ -33,6 +34,10 @@ export default function GongKinhMatMeoPage() {
     load();
   }, []);
 
+  const handleLoadMore = () => {
+    setVisibleProducts((prev) => prev + 8); // Load 8 more products
+  };
+
   if (loading) return <div className="text-center py-10">Đang tải...</div>;
 
   return (
@@ -40,14 +45,14 @@ export default function GongKinhMatMeoPage() {
       <h1 className="text-3xl font-bold mb-6 text-center">Gọng Kính Mắt Mèo</h1>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-        {products.map((product) => (
+        {products.slice(0, visibleProducts).map((product) => (
           <Link
             key={product.id}
             href={`/products/${product.id}`}
             className="border p-4 rounded shadow hover:shadow-lg"
           >
             <Image
-              src={product.primaryImageUrl}
+              src={product.primaryImageUrl || "/images/placeholder.jpg"}
               alt={product.name}
               width={200}
               height={200}
@@ -59,6 +64,17 @@ export default function GongKinhMatMeoPage() {
           </Link>
         ))}
       </div>
+
+      {visibleProducts < products.length && (
+        <div className="text-center mt-8">
+          <button
+            onClick={handleLoadMore}
+            className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600"
+          >
+            Xem thêm
+          </button>
+        </div>
+      )}
     </div>
   );
 }
