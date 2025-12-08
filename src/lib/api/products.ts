@@ -1,5 +1,6 @@
 import axiosClient from "@/lib/api/axios";
-import { Product, ProductFilter } from "@/types/product";
+import { Product } from "@/types/product";
+import type { ProductFilter } from "@/components/product/ProductFilter";
 
 // ==============================
 // HELPER: CHUẨN HÓA DỮ LIỆU ĐẦU RA
@@ -114,31 +115,16 @@ export const getProductsByBrand = async (brand: string): Promise<Product[]> => {
 // ==============================
 // MULTI FILTER QUERY
 // ==============================
-export const filterProducts = async (
-  filter: ProductFilter
-): Promise<Product[]> => {
-  const params: Record<string, string> = {};
+export async function getFilterOptions() {
+  const res = await fetch("http://localhost:8080/api/products");
+  const products = await res.json();
 
-  if (filter.categoryId) params.category = filter.categoryId.toString();
-  if (filter.brand) params.brand = filter.brand;
+  const brands = [...new Set(products.map((p: any) => p.brand))];
+  const categories = [
+    ...new Map(
+      products.map((p: any) => [p.categoryId, { id: p.categoryId, name: p.categoryName }])
+    ).values(),
+  ];
 
-  if (typeof filter.minPrice === "number") {
-    params.minPrice = filter.minPrice.toString();
-  }
-
-  if (typeof filter.maxPrice === "number") {
-    params.maxPrice = filter.maxPrice.toString();
-  }
-
-  if (typeof filter.inStock === "boolean") {
-    params.inStock = filter.inStock ? "true" : "false";
-  }
-
-  try {
-    const res = await axiosClient.get("/products", { params });
-    return extractArrayData(res.data);
-  } catch (err) {
-    console.error("❌ Lỗi API filterProducts:", err);
-    return [];
-  }
-};
+  return { brands, categories };
+}

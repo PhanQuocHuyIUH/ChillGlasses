@@ -22,8 +22,11 @@ const Header = () => {
   }, []);
 
   const handleSearch = () => {
-    console.log("Tìm kiếm:", searchTerm);
+    if (searchTerm.trim()) {
+      router.push(`/results?search=${searchTerm}`);
+    }
   };
+
 
   const handleCartClick = () => {
     const blocked = requireLogin({
