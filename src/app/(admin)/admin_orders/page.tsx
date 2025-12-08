@@ -26,8 +26,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { AlertTriangle, Loader2, Search } from "lucide-react";
 
 const OrderPage = () => {
-  const router = useRouter();
-
   // State management
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
