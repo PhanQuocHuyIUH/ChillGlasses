@@ -84,11 +84,12 @@ const AdminAccountsManagementPage = () => {
    * @param isActive - Current active status
    */
   const handleToggleStatus = async (userId: number, isActive: boolean) => {
-    if (
-      !confirm(
-        `Are you sure you want to ${isActive ? "lock" : "unlock"} this user?`
-      )
-    ) {
+    const action = isActive ? "lock" : "unlock";
+    const message = isActive
+      ? "Are you sure you want to LOCK this user?\n\nLocked users:\n- Cannot login to the system\n- Will be marked as deleted\n- Can be unlocked later by admin"
+      : "Are you sure you want to UNLOCK this user?\n\nUnlocked users:\n- Can login to the system\n- Will be restored from deleted status";
+
+    if (!confirm(message)) {
       return;
     }
 

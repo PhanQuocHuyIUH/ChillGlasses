@@ -54,22 +54,22 @@ const adminUserApi = {
   },
 
   /**
-   * Lock user account
-   * PATCH /api/admin/users/{id}/lock
+   * Lock user account (soft delete)
+   * POST /api/admin/users/{id}/lock
    */
   lockUser: async (id: number) => {
-    const response = await axiosClient.patch<ApiResponse<User>>(
+    const response = await axiosClient.post<ApiResponse<User>>(
       `/admin/users/${id}/lock`
     );
     return response.data;
   },
 
   /**
-   * Unlock user account
-   * PATCH /api/admin/users/{id}/unlock
+   * Unlock user account (restore from soft delete)
+   * POST /api/admin/users/{id}/unlock
    */
   unlockUser: async (id: number) => {
-    const response = await axiosClient.patch<ApiResponse<User>>(
+    const response = await axiosClient.post<ApiResponse<User>>(
       `/admin/users/${id}/unlock`
     );
     return response.data;
