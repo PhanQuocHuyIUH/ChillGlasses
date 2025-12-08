@@ -1,6 +1,5 @@
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import ChatBot from "@/components/chat/ChatBot";
 
 const layout = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -9,7 +8,6 @@ const layout = ({ children }: { children: React.ReactNode }) => {
         <Header />
         {children}
         <Footer />
-        <ChatBot />
       </div>
     </>
   );

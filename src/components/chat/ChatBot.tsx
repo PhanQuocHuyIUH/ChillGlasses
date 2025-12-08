@@ -72,30 +72,10 @@ export default function ChatBot() {
     setIsLoading(true);
 
     try {
-      // Determine context type based on message content
-      let contextType = "general_chat";
-      const lowerMsg = inputValue.toLowerCase();
+      console.log("Sending chat request:", inputValue);
 
-      if (
-        lowerMsg.includes("mặt") ||
-        lowerMsg.includes("khuôn") ||
-        lowerMsg.includes("da")
-      ) {
-        contextType = "style_advice";
-      } else if (
-        lowerMsg.includes("giá") ||
-        lowerMsg.includes("tiền") ||
-        lowerMsg.includes("mua")
-      ) {
-        contextType = "product_recommendation";
-      }
-
-      console.log("Sending request to:", "/chat-ai/guest-chat");
-      console.log("Request data:", { message: inputValue, contextType });
-
-      const response = await axios.post("/chat-ai/guest-chat", {
+      const response = await axios.post("/chat-ai/chat", {
         message: inputValue,
-        contextType: contextType,
       });
 
       console.log("API Response:", response.data);
