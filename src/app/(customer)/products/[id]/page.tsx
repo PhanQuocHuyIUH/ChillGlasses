@@ -1,220 +1,320 @@
 "use client";
 
-import { useState } from "react";
-import { useParams } from "next/navigation"; // Lấy tham số từ URL
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import product1 from "@/../public/images/product1.jpg";
-import product2 from "@/../public/images/product2.jpg";
-import product3 from "@/../public/images/product3.jpg";
-import product4 from "@/../public/images/product4.jpg";
+import { Product } from "@/types/product";
+import { getProductById } from "@/lib/api/products";
+import { addToCart } from "@/lib/api/cart";
+import { requireLogin } from "@/lib/authClient";
 
-// Danh sách sản phẩm mẫu
-const allProducts = [
-  {
-    id: 1,
-    name: "Sản phẩm 1",
-    price: "500.000đ",
-    description: "Đây là sản phẩm kính thời trang cao cấp, mang lại sự tự tin và phong cách cho người sử dụng.",
-    specs: "Chất liệu nhựa cao cấp, chống tia UV, thiết kế hiện đại.",
-    stock: 20,
-    rating: 4.5,
-    reviews: [
-      { name: "Nguyễn Văn A", rating: 5, comment: "Sản phẩm rất đẹp và chất lượng. Tôi rất hài lòng!" },
-      { name: "Trần Thị B", rating: 4, comment: "Sản phẩm tốt nhưng giao hàng hơi chậm." },
-    ],
-    image: product1,
-  },
-  {
-    id: 2,
-    name: "Sản phẩm 2",
-    price: "700.000đ",
-    description: "Sản phẩm kính thời trang với thiết kế hiện đại, phù hợp với mọi lứa tuổi.",
-    specs: "Chất liệu kim loại cao cấp, chống xước, chống tia UV.",
-    stock: 15,
-    rating: 4.0,
-    reviews: [
-      { name: "Lê Văn C", rating: 4, comment: "Thiết kế đẹp, nhưng hơi nặng." },
-      { name: "Hoàng Thị D", rating: 5, comment: "Rất hài lòng với sản phẩm này!" },
-    ],
-    image: product2,
-  },
-  {
-    id: 3,
-    name: "Sản phẩm 3",
-    price: "1.000.000đ",
-    description: "Kính thời trang cao cấp, mang lại sự sang trọng và đẳng cấp.",
-    specs: "Chất liệu nhựa và kim loại, chống tia UV, thiết kế thời thượng.",
-    stock: 10,
-    rating: 5.0,
-    reviews: [
-      { name: "Phạm Văn E", rating: 5, comment: "Sản phẩm tuyệt vời, rất đáng tiền!" },
-    ],
-    image: product3,
-  },
-  {
-    id: 4,
-    name: "Sản phẩm 4",
-    price: "1.200.000đ",
-    description: "Kính thời trang dành cho doanh nhân, thiết kế tinh tế và hiện đại.",
-    specs: "Chất liệu cao cấp, chống tia UV, chống xước.",
-    stock: 5,
-    rating: 3.5,
-    reviews: [
-      { name: "Nguyễn Thị F", rating: 3, comment: "Sản phẩm ổn, nhưng giá hơi cao." },
-    ],
-    image: product4,
-  },
-];
+export default function ProductDetailPage() {
+  const router = useRouter();
+  const { id } = useParams();
 
-const ProductDetailPage = () => {
-  const { id } = useParams(); // Lấy id từ URL
-  const [quantity, setQuantity] = useState(1); // Số lượng sản phẩm
-  const [newReview, setNewReview] = useState({ name: "", rating: 0, comment: "" }); // Đánh giá mới
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const product = typeof id === "string" ? allProducts.find((p) => p.id === parseInt(id)) : null; // Tìm sản phẩm theo id
-  const [reviews, setReviews] = useState(product ? product.reviews : []); // Danh sách đánh giá
+  const [imageError, setImageError] = useState(false);
 
-  if (!product) {
-    return <div className="text-center py-8">Sản phẩm không tồn tại.</div>;
-  }
+  const [quantity, setQuantity] = useState(1);
+  const [newReview, setNewReview] = useState({
+    name: "",
+    rating: 0,
+    comment: "",
+  });
 
-  // Hàm tăng số lượng
+  const [reviews, setReviews] = useState<any[]>([
+    {
+      name: "Người mua hàng",
+      rating: 5,
+      comment: "Gọng kính đẹp, nhẹ, đúng mô tả!",
+      approved: true,
+    },
+  ]);
+
+  const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    async function loadProduct() {
+      if (!id) return;
+      try {
+        setLoading(true);
+        const productId = Number(id);
+        if (isNaN(productId)) {
+          setError("ID sản phẩm không hợp lệ.");
+          return;
+        }
+
+        const data = await getProductById(productId);
+        setProduct(data);
+      } catch (err) {
+        console.error("Lỗi tải sản phẩm:", err);
+        setError("Không tìm thấy sản phẩm.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadProduct();
+  }, [id]);
+
   const handleIncrease = () => {
-    setQuantity((prev) => prev + 1);
-  };
-
-  // Hàm giảm số lượng
-  const handleDecrease = () => {
-    if (quantity > 1) {
-      setQuantity((prev) => prev - 1);
+    if (product && quantity < product.stockQuantity) {
+      setQuantity((prev) => prev + 1);
     }
   };
 
-  // Hàm xử lý khi gửi đánh giá
+  const handleDecrease = () => {
+    if (quantity > 1) setQuantity((prev) => prev - 1);
+  };
+
   const handleSubmitReview = () => {
     if (newReview.name && newReview.rating > 0 && newReview.comment) {
-      setReviews((prev) => [...prev, newReview]); // Thêm đánh giá mới vào danh sách
-      setNewReview({ name: "", rating: 0, comment: "" }); // Reset form
+      setReviews((prev) => [...prev, { ...newReview, approved: false }]);
+      setNewReview({ name: "", rating: 0, comment: "" });
+      alert("Cảm ơn bạn đã đánh giá!");
     } else {
-      alert("Vui lòng điền đầy đủ thông tin đánh giá!");
+      alert("Vui lòng nhập đủ thông tin!");
     }
   };
 
+  // 🛒 Thêm vào giỏ – BẮT BUỘC LOGIN
+  const handleAddToCart = async () => {
+    if (!product) return;
+    if (product.stockQuantity === 0) {
+      alert("Sản phẩm đã hết hàng.");
+      return;
+    }
+
+    const blocked = requireLogin({
+      router,
+      redirectTo: `/products/${product.id}`,
+      message: "Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.",
+    });
+    if (blocked) return;
+
+    try {
+      setAdding(true);
+      const updatedCart = await addToCart(product.id, quantity);
+      console.log("Cart sau khi thêm:", updatedCart);
+      alert("Đã thêm vào giỏ hàng ✔");
+    } catch (err) {
+      console.error("Lỗi thêm vào giỏ:", err);
+      alert(
+          "Thêm vào giỏ thất bại. Hãy kiểm tra lại đăng nhập / token / backend."
+      );
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  // ⚡ Mua ngay – BẮT BUỘC LOGIN
+  // 👉 LƯU productId + quantity vào localStorage để checkout biết quay về đâu
+  const handleBuyNow = async () => {
+    if (!product) return;
+    if (product.stockQuantity === 0) {
+      alert("Sản phẩm đã hết hàng.");
+      return;
+    }
+
+    const blocked = requireLogin({
+      router,
+      redirectTo: `/products/${product.id}`,
+      message: "Vui lòng đăng nhập để mua hàng.",
+    });
+    if (blocked) return;
+
+    try {
+      setAdding(true);
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem(
+            "buyNowPayload",
+            JSON.stringify({
+              productId: product.id,
+              quantity,
+            })
+        );
+      }
+
+      // Vẫn addToCart để backend có dữ liệu tạo đơn
+      await addToCart(product.id, quantity);
+
+      // Sang checkout với mode=buyNow để phân biệt với từ giỏ hàng
+      router.push("/checkout?mode=buyNow");
+    } catch (err) {
+      console.error("Lỗi khi mua ngay:", err);
+      alert("Không thể thực hiện Mua ngay. Vui lòng thử lại.");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  if (loading)
+    return (
+        <div className="text-center py-20 text-gray-500">
+          Đang tải dữ liệu...
+        </div>
+    );
+  if (error || !product)
+    return (
+        <div className="text-center py-20 text-red-500">
+          {error || "Sản phẩm không tồn tại."}
+        </div>
+    );
+
+  const isOutOfStock = product.stockQuantity === 0;
+  const hasDiscount = product.originalPrice > product.price;
+  const discountPercent = hasDiscount
+      ? Math.round(
+          ((product.originalPrice - product.price) / product.originalPrice) * 100
+      )
+      : 0;
+
+  const primaryImage = product.images.find((image) => image.isPrimary);
+  const imageUrl =
+    imageError || !primaryImage?.imageUrl
+    ? "/images/product1.jpg"
+    : primaryImage.imageUrl;
+
   return (
-    <div className="container pt-20 pb-40 mx-auto py-8 px-4">
-      {/* Thông tin sản phẩm */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Hình ảnh sản phẩm */}
-        <div className="flex justify-center">
-          <Image
-            src={product.image}
-            alt={product.name}
-            className="w-full h-auto rounded-lg shadow"
-            width={500}
-            height={500}
-            priority
-          />
+  <div className="container mx-auto py-10 px-4 text-black">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+
+      {/* IMAGE SECTION */}
+      <div className="relative flex justify-center border rounded-xl p-4 shadow-md bg-white hover:shadow-xl transition-shadow duration-300">
+        {hasDiscount && (
+          <span className="absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold z-10 shadow">
+            -{discountPercent}%
+          </span>
+        )}
+
+        <Image
+          src={imageUrl}
+          alt={product?.name || "Chi tiết sản phẩm"}
+          width={500}
+          height={500}
+          className={`w-full h-auto object-contain max-h-[500px] rounded-lg transition-transform duration-300 hover:scale-[1.02] ${
+            isOutOfStock ? "grayscale opacity-80" : ""
+          }`}
+          onError={() => setImageError(true)}
+          priority
+        />
+
+        {isOutOfStock && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm">
+            <span className="bg-black text-white px-6 py-3 text-xl font-bold uppercase rotate-[-10deg] shadow-lg rounded">
+              Hết hàng
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* INFO SECTION */}
+      <div>
+        <p className="text-sm text-gray-500 mb-2 uppercase tracking-wide">
+          {product.categoryName} • {product.brand}
+        </p>
+
+        <h1 className="text-3xl md:text-4xl font-bold mb-4 leading-snug">
+          {product.name}
+        </h1>
+
+        {/* PRICE */}
+        <div className="flex items-end gap-3 mb-6">
+          <span className="text-3xl text-red-600 font-bold drop-shadow-sm">
+            {product.formattedPrice}
+          </span>
+          {hasDiscount && (
+            <span className="text-lg text-gray-400 line-through mb-1">
+              {product.formattedOriginalPrice}
+            </span>
+          )}
         </div>
 
-        {/* Chi tiết sản phẩm */}
-        <div>
-          <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
-          <p className="text-xl text-red-500 font-bold mb-4">Giá: {product.price}</p>
-          <p className="text-gray-700 mb-4">
-            <strong>Mô tả:</strong> {product.description}
-          </p>
-          <p className="text-gray-700 mb-4">
-            <strong>Thông số kỹ thuật:</strong> {product.specs}
-          </p>
-          <p className="text-gray-700 mb-4">
-            <strong>Tồn kho:</strong> Còn {product.stock} sản phẩm
+        {/* DESCRIPTION BOX */}
+        <div className="bg-gray-50 p-5 rounded-xl mb-8 border shadow-sm">
+          <p className="text-gray-700 mb-4 leading-relaxed">
+            {product.description || "Mô tả đang được cập nhật..."}
           </p>
 
-          {/* Nút số lượng */}
-          <div className="flex items-center mb-6">
+          <div className="grid grid-cols-2 gap-y-3 text-sm">
+            <div><strong>Thương hiệu:</strong> {product.brand}</div>
+            <div><strong>Mã SP:</strong> {product.slug}</div>
+            <div><strong>Đánh giá:</strong> {product.rating || 0} ⭐</div>
+
+            <div className={isOutOfStock ? "text-red-500 font-bold" : "text-green-600 font-bold"}>
+              <strong>Tình trạng:</strong>{" "}
+              {isOutOfStock ? "Hết hàng" : `Còn ${product.stockQuantity} SP`}
+            </div>
+          </div>
+        </div>
+
+        {/* QUANTITY */}
+        <div className="flex items-center mb-6">
+          <span className="mr-4 font-semibold">Số lượng:</span>
+          <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden shadow-sm">
             <button
               onClick={handleDecrease}
-              className="px-4 py-2 bg-gray-300 text-gray-800 rounded-l hover:bg-gray-400"
+              disabled={isOutOfStock || quantity <= 1}
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 transition"
             >
               -
             </button>
-            <input
-              type="text"
-              value={quantity}
-              readOnly
-              className="w-12 text-center border-t border-b border-gray-300"
-              title="Quantity"
-              placeholder="Quantity"
-            />
+            <div className="w-16 text-center py-2 bg-white font-medium">
+              {quantity}
+            </div>
             <button
               onClick={handleIncrease}
-              className="px-4 py-2 bg-gray-300 text-gray-800 rounded-r hover:bg-gray-400"
+              disabled={isOutOfStock || quantity >= product.stockQuantity}
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 transition"
             >
               +
             </button>
           </div>
-
-          {/* Nút hành động */}
-          <div className="flex flex-wrap gap-4">
-            <button className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600">
-              Mua ngay
-            </button>
-            <button className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600">
-              Thêm vào giỏ hàng
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Đánh giá và review */}
-      <div className="mt-12">
-        <h2 className="text-2xl font-bold mb-4">Đánh giá và nhận xét</h2>
-        <div className="space-y-4">
-          {reviews.map((review, index) => (
-            <div key={index} className="border rounded-lg p-4 shadow">
-              <h3 className="text-lg font-bold">{review.name}</h3>
-              <p className="text-yellow-500">Rating: {review.rating} ⭐</p>
-              <p className="text-gray-700">{review.comment}</p>
-            </div>
-          ))}
         </div>
 
-        {/* Khung viết đánh giá */}
-        <div className="mt-8 border rounded-lg p-4 shadow">
-          <h3 className="text-lg font-bold mb-4">Viết đánh giá của bạn</h3>
-          <input
-            type="text"
-            placeholder="Tên của bạn"
-            value={newReview.name}
-            onChange={(e) => setNewReview({ ...newReview, name: e.target.value })}
-            className="w-full mb-4 px-4 py-2 border rounded"
-          />
-          <input
-            type="number"
-            placeholder="Đánh giá (1-5)"
-            value={newReview.rating}
-            onChange={(e) => setNewReview({ ...newReview, rating: parseInt(e.target.value) })}
-            className="w-full mb-4 px-4 py-2 border rounded"
-            min="1"
-            max="5"
-          />
-          <textarea
-            placeholder="Nhận xét của bạn"
-            value={newReview.comment}
-            onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
-            className="w-full mb-4 px-4 py-2 border rounded"
-            rows={4}
-          />
+        {/* ACTION BUTTONS */}
+        <div className="flex flex-col sm:flex-row gap-4">
           <button
-            onClick={handleSubmitReview}
-            className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600"
+            onClick={handleBuyNow}
+            disabled={isOutOfStock || adding}
+            className={`flex-1 px-8 py-3 rounded-xl font-bold uppercase transition shadow-md
+            ${
+              isOutOfStock
+                ? "bg-gray-400 cursor-not-allowed text-white"
+                : "bg-red-600 hover:bg-red-700 text-white"
+            }`}
           >
-            Gửi đánh giá
+            {isOutOfStock ? "Tạm hết hàng" : adding ? "Đang xử lý..." : "Mua Ngay"}
+          </button>
+
+          <button
+            onClick={handleAddToCart}
+            disabled={isOutOfStock || adding}
+            className={`flex-1 px-8 py-3 rounded-xl font-bold uppercase transition border-2 shadow-md
+            ${
+              isOutOfStock
+                ? "border-gray-300 text-gray-400 cursor-not-allowed"
+                : "border-blue-600 text-blue-600 hover:bg-blue-50"
+            }`}
+          >
+            {adding ? "Đang thêm..." : "Thêm vào giỏ"}
           </button>
         </div>
       </div>
     </div>
-  );
-};
 
-export default ProductDetailPage;
+    {/* REVIEW SECTION */}
+    <div className="mt-16 border-t pt-10">
+      <h2 className="text-2xl font-bold mb-6">Đánh giá khách hàng ({product.reviewCount})</h2>
+
+      <div className="bg-gray-50 p-8 rounded-xl border shadow-sm text-center text-gray-500">
+        <p>Chức năng đánh giá sẽ được cập nhật.</p>
+      </div>
+    </div>
+  </div>
+);
+
+}

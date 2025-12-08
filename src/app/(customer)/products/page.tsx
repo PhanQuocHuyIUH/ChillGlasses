@@ -1,98 +1,124 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import Link from "next/link"; // Import Link từ next/link
-import product1 from "@/../public/images/product1.jpg";
-import product2 from "@/../public/images/product2.jpg";
-import product3 from "@/../public/images/product3.jpg";
-import product4 from "@/../public/images/product4.jpg";
+import Link from "next/link";
+import { getAllProducts } from "@/lib/api/products";
+import { Product } from "@/types/product";
 
-const allProducts = [
-  {
-    id: 1,
-    name: "Sản phẩm 1",
-    price: "500.000đ",
-    rating: 4.5,
-    image: product1,
-  },
-  {
-    id: 2,
-    name: "Sản phẩm 2",
-    price: "700.000đ",
-    rating: 4.0,
-    image: product2,
-  },
-  {
-    id: 3,
-    name: "Sản phẩm 3",
-    price: "1.000.000đ",
-    rating: 5.0,
-    image: product3,
-  },
-  {
-    id: 4,
-    name: "Sản phẩm 4",
-    price: "1.200.000đ",
-    rating: 3.5,
-    image: product4,
-  },
-  {
-    id: 5,
-    name: "Sản phẩm 5",
-    price: "800.000đ",
-    rating: 4.2,
-    image: product1,
-  },
-  {
-    id: 6,
-    name: "Sản phẩm 6",
-    price: "600.000đ",
-    rating: 4.8,
-    image: product2,
-  },
-];
+const PromotionPage = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [visibleProducts, setVisibleProducts] = useState(4);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-const ProductListingPage = () => {
-  const [visibleProducts, setVisibleProducts] = useState(4); // Số lượng sản phẩm hiển thị ban đầu
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
 
-  // Hàm xử lý khi nhấn nút Load More
+        const res = await getAllProducts();
+
+        console.log("API RAW products:", res);
+
+        // API trả về mảng → set trực tiếp
+        if (Array.isArray(res)) {
+          setProducts(res);
+        } else {
+          console.error("Unexpected product response:", res);
+          setProducts([]);
+        }
+      } catch (err) {
+        console.error("Error fetching products:", err);
+        setError("Không thể tải danh sách sản phẩm. Vui lòng thử lại sau.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
   const handleLoadMore = () => {
-    setVisibleProducts((prev) => prev + 2); // Hiển thị thêm 2 sản phẩm mỗi lần nhấn
+    setVisibleProducts((prev) => prev + 4);
   };
 
+  if (loading) {
+    return <div className="text-center py-8">Đang tải sản phẩm...</div>;
+  }
+
+  if (error) {
+    return <div className="text-center py-8 text-red-500">{error}</div>;
+  }
+
+  // Filter products to show only those on sale
+  const discountedProducts = products.filter(
+    (product) => product.formattedPrice
+  );
+
   return (
-    <div className="text-black container mx-auto py-8">
-      <h1 className="text-3xl font-bold text-center mb-8">DANH SÁCH SẢN PHẨM</h1>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {allProducts.slice(0, visibleProducts).map((product) => (
-          <Link
-            key={product.id}
-            href={`/products/${product.id}`} // Đường dẫn đến trang chi tiết sản phẩm
-            className="border rounded-lg p-4 shadow hover:shadow-lg transition-shadow block"
-          >
-            <div>
-              <Image
-                src={product.image}
-                alt={product.name}
-                className="w-full h-40 object-cover rounded"
-                width={160}
-                height={160}
-              />
-              <h2 className="text-lg font-bold mt-4">{product.name}</h2>
-              <p className="text-gray-600 mt-2">Giá: {product.price}</p>
-              <p className="text-yellow-500 mt-2">Rating: {product.rating} ⭐</p>
-            </div>
-          </Link>
-        ))}
-      </div>
-      {visibleProducts < allProducts.length && (
+    <div className="text-black w-full max-w-6xl mx-auto py-8 pt-24">
+      <h1 className="text-3xl font-bold text-center mb-8">
+        SẢN PHẨM ĐANG GIẢM GIÁ
+      </h1>
+
+      {discountedProducts.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 ">
+          {discountedProducts.slice(0, visibleProducts).map((product) => {
+            const imageUrl =
+              product.primaryImageUrl && product.primaryImageUrl.trim() !== ""
+                ? product.primaryImageUrl
+                : "/images/product1.jpg";
+
+            return (
+              <Link
+                key={product.id}
+                href={`/products/${product.id}`}
+                className="border hover:-translate-y-1 rounded-lg p-4 shadow hover:shadow-lg transition-shadow block bg-white"
+              >
+                <div className="w-full h-40 relative mb-3">
+                  <Image
+                    src={imageUrl}
+                    alt={product.name}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 25vw"
+                    className="object-cover rounded"
+                  />
+                </div>
+
+                <h2 className="text-lg font-bold mt-1 line-clamp-2">
+                  {product.name}
+                </h2>
+
+                <div className="mt-2">
+                  <p className="text-gray-400 text-sm line-through">
+                    {product.originalPrice.toLocaleString("vi-VN")} đ
+                  </p>
+                  <p className="text-red-600 font-semibold">
+                    {product.formattedPrice || product.originalPrice.toLocaleString("vi-VN")} đ
+                  </p>
+                </div>
+
+                {product.brand && (
+                  <p className="text-xs text-gray-500 mt-1 uppercase">
+                    {product.brand}
+                  </p>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="text-center py-8">Hiện chưa có sản phẩm giảm giá nào.</div>
+      )}
+
+      {visibleProducts < discountedProducts.length && (
         <div className="text-center mt-8">
           <button
             onClick={handleLoadMore}
             className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600"
           >
-            Load More
+            Xem thêm
           </button>
         </div>
       )}
@@ -100,4 +126,4 @@ const ProductListingPage = () => {
   );
 };
 
-export default ProductListingPage;
+export default PromotionPage;
