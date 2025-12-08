@@ -28,6 +28,7 @@ type PromoInfo = {
     message: string | null;
 };
 
+// 🧙 Ma đạo promotion: hard-code theo bảng promotion trong DB
 const evaluatePromotion = (
     codeRaw: string,
     subtotal: number,
@@ -49,17 +50,19 @@ const evaluatePromotion = (
         };
     }
 
-    // Demo 3 mã mẫu
-    if (code === "FREESHIP") {
-        const discount = shippingFee;
+    // FREESHIP2025: miễn phí vận chuyển (tối đa 60k) – giảm trên phí ship
+    if (code === "FREESHIP2025") {
+        const discount = Math.min(shippingFee, 60000);
         return {
             code,
             valid: true,
             discount,
-            message: "Áp dụng miễn phí vận chuyển cho đơn này.",
+            message:
+                "Áp dụng miễn phí vận chuyển (tối đa 60.000 đ) cho đơn này.",
         };
     }
 
+    // WELCOME20: giảm 20% trên tiền hàng
     if (code === "WELCOME20") {
         const discount = Math.round(subtotal * 0.2);
         return {
@@ -70,13 +73,15 @@ const evaluatePromotion = (
         };
     }
 
-    if (code === "XMAS50K") {
+    // XMAS1000K: giảm 50k cho đơn từ 1.000.000 đ tiền hàng trở lên
+    if (code === "XMAS1000K") {
         if (subtotal < 1_000_000) {
             return {
                 code,
                 valid: false,
                 discount: 0,
-                message: "Mã này áp dụng cho đơn hàng từ 1.000.000 đ tiền hàng trở lên.",
+                message:
+                    "Mã này áp dụng cho đơn hàng từ 1.000.000 đ tiền hàng trở lên.",
             };
         }
         return {
@@ -92,7 +97,8 @@ const evaluatePromotion = (
         code,
         valid: false,
         discount: 0,
-        message: "Mã khuyến mãi không tồn tại hoặc chưa được hỗ trợ trên hệ thống.",
+        message:
+            "Mã khuyến mãi không tồn tại hoặc chưa được hỗ trợ trên hệ thống.",
     };
 };
 
@@ -349,12 +355,11 @@ const CheckoutPage = () => {
                 const items = cart.items as any[];
 
                 if (isBuyNowMode && buyNowProductId && buyNowQuantity) {
-                    // Nếu là Mua ngay → trừ đúng số lượng đã Mua ngay
+                    // Nếu là Mua ngay → backup lại giỏ hàng gốc (trừ đi phần mua ngay)
                     backupCartItems = items
                         .map((it) => {
                             if (it.productId === buyNowProductId) {
-                                const remainingQty =
-                                    it.quantity - buyNowQuantity!;
+                                const remainingQty = it.quantity - buyNowQuantity!;
 
                                 if (remainingQty > 0) {
                                     return {
@@ -363,7 +368,7 @@ const CheckoutPage = () => {
                                     };
                                 }
 
-                                // Nếu <= 0 thì coi như sản phẩm này không tồn tại trong giỏ trước đó
+                                // Nếu <= 0 thì coi như sản phẩm này không còn trong giỏ trước đó
                                 return null;
                             }
 
@@ -380,7 +385,7 @@ const CheckoutPage = () => {
                                 x !== null
                         );
                 } else {
-                    // Không phải Mua ngay → cart backup đúng như hiện tại
+                    // Không phải Mua ngay → backup y nguyên giỏ hiện tại
                     backupCartItems = items.map((it) => ({
                         productId: it.productId,
                         quantity: it.quantity,
@@ -398,15 +403,26 @@ const CheckoutPage = () => {
 
             console.log("📦 Payload gửi lên /api/orders:", payload);
 
+            if (isBuyNowMode && buyNowProductId && buyNowQuantity) {
+                // 1. Xóa sạch cart hiện tại trên BE
+                await clearCart();
+
+                // 2. Thêm đúng 1 sản phẩm + số lượng mua ngay vào cart trên BE
+                await addToCart(buyNowProductId, buyNowQuantity);
+            }
+
+            // 3. Gọi BE tạo đơn → BE dùng cart HIỆN TẠI
             const order = await createOrder(payload);
 
             console.log("✅ Order tạo thành công từ BE:", order);
 
             if (!isBuyNowMode) {
-                // Case: đặt từ GIỎ HÀNG → clear cart như cũ
+                // Đặt từ giỏ hàng → clear cart như cũ
                 await clearCart();
             } else {
-                // Case: MUA NGAY → BE clear cart, FE dựng lại giỏ CŨ (đã trừ phần mua ngay)
+                // Mua ngay → clear cart rồi dựng lại backup
+                await clearCart();
+
                 if (backupCartItems.length > 0) {
                     await Promise.all(
                         backupCartItems.map((item) =>
@@ -634,7 +650,7 @@ const CheckoutPage = () => {
                                         ? "border border-red-500"
                                         : "border border-gray-300"
                                 }`}
-                                placeholder="Nhập mã giảm giá (FREESHIP, WELCOME20, XMAS50K...)"
+                                placeholder="Nhập mã giảm giá (FREESHIP2025, WELCOME20, XMAS1000K...)"
                             />
                             {promoInfo.message && (
                                 <p

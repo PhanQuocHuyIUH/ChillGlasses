@@ -58,7 +58,6 @@ const OrderDetailPage = () => {
     const [otherReason, setOtherReason] = useState("");
     const [submittingCancel, setSubmittingCancel] = useState(false);
 
-    // 🧠 Helper: đọc lý do hủy từ localStorage (nếu có)
     const getLocalCancelNote = (id: number): string | undefined => {
         if (typeof window === "undefined") return undefined;
         try {
@@ -74,7 +73,6 @@ const OrderDetailPage = () => {
         }
     };
 
-    // 🧠 Helper: lưu lý do hủy vào localStorage
     const saveLocalCancelNote = (id: number, note: string) => {
         if (typeof window === "undefined") return;
         try {
@@ -111,7 +109,6 @@ const OrderDetailPage = () => {
 
                 if (!isMounted) return;
 
-                // Nếu đơn đã hủy mà notes từ BE trống → thử lấy từ localStorage
                 if (data.status === "CANCELLED" && !data.notes) {
                     const localNote = getLocalCancelNote(data.id);
                     setOrder(
@@ -142,15 +139,45 @@ const OrderDetailPage = () => {
         };
     }, [orderId]);
 
-    const subtotal = order
-        ? order.items.reduce(
+    // ✅ Chính đạo tiền: tin BE, không tự suy shippingFee nữa
+    const subtotal =
+        order?.items.reduce(
             (sum, item) => sum + item.productPrice * item.quantity,
             0
-        )
-        : 0;
+        ) ?? 0;
 
-    const shippingFee = order?.shippingFee ?? 0;
-    const total = order?.totalAmount ?? subtotal + shippingFee;
+    const shippingFee =
+        order && typeof order.shippingFee === "number"
+            ? order.shippingFee
+            : 0;
+
+    const anyOrder = order as any;
+    const promotionDiscountAmount: number =
+        anyOrder?.promotionDiscountAmount && typeof anyOrder.promotionDiscountAmount === "number"
+            ? anyOrder.promotionDiscountAmount
+            : 0;
+
+    const formattedPromotionDiscountAmount: string | null =
+        typeof anyOrder?.formattedPromotionDiscountAmount === "string"
+            ? anyOrder.formattedPromotionDiscountAmount
+            : promotionDiscountAmount > 0
+                ? formatPrice(promotionDiscountAmount) + " đ"
+                : null;
+
+    const hasPromotion =
+        typeof anyOrder?.promotionCode === "string" &&
+        anyOrder.promotionCode.trim() !== "" &&
+        promotionDiscountAmount > 0;
+
+    const beTotalAmount =
+        order && typeof order.totalAmount === "number"
+            ? order.totalAmount
+            : subtotal + shippingFee - promotionDiscountAmount;
+
+    const formattedBeTotal =
+        typeof anyOrder?.formattedTotalAmount === "string"
+            ? anyOrder.formattedTotalAmount
+            : formatPrice(beTotalAmount) + " đ";
 
     const toggleReason = (reason: string) => {
         setCancelReasons((prev) =>
@@ -167,9 +194,6 @@ const OrderDetailPage = () => {
     const handleCloseCancelModal = () => {
         setShowCancelModal(false);
         setSubmittingCancel(false);
-        // Nếu muốn reset khi đóng popup:
-        // setCancelReasons([]);
-        // setOtherReason("");
     };
 
     const handleConfirmCancel = async () => {
@@ -180,7 +204,6 @@ const OrderDetailPage = () => {
             return;
         }
 
-        // 🧠 Gộp lý do lại thành 1 chuỗi rõ ràng để gán vào notes
         const parts: string[] = [];
 
         if (cancelReasons.length > 0) {
@@ -202,10 +225,8 @@ const OrderDetailPage = () => {
                 otherReason: otherReason.trim() || undefined,
             });
 
-            // Lưu vào localStorage để lần sau mở lại vẫn thấy
             saveLocalCancelNote(order.id, cancelNote);
 
-            // Cập nhật UI
             setOrder((prev) =>
                 prev
                     ? {
@@ -229,7 +250,6 @@ const OrderDetailPage = () => {
         }
     };
 
-    // Chỉ cho hủy khi đơn đang PENDING
     const canRequestCancel = order && order.status === "PENDING";
 
     if (loading) {
@@ -290,7 +310,7 @@ const OrderDetailPage = () => {
                     </div>
                 </div>
 
-                {/* Nếu là đơn đã hủy và có lý do hủy → show block nổi bật */}
+                {/* Nếu là đơn đã hủy và có lý do hủy → show block */}
                 {order.status === "CANCELLED" && order.notes && (
                     <div className="bg-red-50 border border-red-200 text-red-800 text-sm px-4 py-3 rounded-lg">
                         <p className="font-semibold mb-1">
@@ -326,13 +346,33 @@ const OrderDetailPage = () => {
                             : "Chưa thanh toán"}
                         )
                     </p>
-                    {/* Giữ lại ghi chú gốc nếu có (ví dụ từ checkout) */}
-                    {order.notes &&
-                        order.status !== "CANCELLED" && (
+                    {/* Ghi chú gốc từ checkout (nếu có, và đơn không bị hủy) */}
+                    {order.notes && order.status !== "CANCELLED" && (
+                        <p>
+                            <strong>Ghi chú:</strong> {order.notes}
+                        </p>
+                    )}
+
+                    {/* Hiển thị thông tin khuyến mãi (nếu có) */}
+                    {hasPromotion && (
+                        <div className="mt-2 text-sm text-green-700">
                             <p>
-                                <strong>Ghi chú:</strong> {order.notes}
+                                <strong>Mã khuyến mãi:</strong>{" "}
+                                {anyOrder.promotionCode}
                             </p>
-                        )}
+                            <p>
+                                <strong>Giảm giá áp dụng:</strong>{" "}
+                                {formattedPromotionDiscountAmount}
+                            </p>
+                            {typeof anyOrder.promotionDescription === "string" &&
+                                anyOrder.promotionDescription.trim() !== "" && (
+                                    <p>
+                                        <strong>Mô tả:</strong>{" "}
+                                        {anyOrder.promotionDescription}
+                                    </p>
+                                )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Sản phẩm */}
@@ -384,20 +424,34 @@ const OrderDetailPage = () => {
                     </div>
                 </div>
 
-                {/* Tổng tiền */}
+                {/* Tổng tiền: dùng totalAmount + promotion từ BE */}
                 <div className="bg-white shadow p-6 rounded-lg space-y-2">
                     <h2 className="text-lg font-semibold">Tổng tiền</h2>
                     <div className="flex justify-between text-sm">
                         <span>Tạm tính:</span>
                         <span>{formatPrice(subtotal)} đ</span>
                     </div>
+
+                    {hasPromotion && (
+                        <div className="flex justify-between text-sm text-green-700">
+                            <span>Giảm giá:</span>
+                            <span>
+                                -
+                                {formattedPromotionDiscountAmount ??
+                                    formatPrice(promotionDiscountAmount) +
+                                    " đ"}
+                            </span>
+                        </div>
+                    )}
+
                     <div className="flex justify-between text-sm">
                         <span>Phí giao hàng:</span>
                         <span>{formatPrice(shippingFee)} đ</span>
                     </div>
+
                     <div className="flex justify-between font-bold text-lg pt-2 border-t mt-2">
                         <span>Tổng cộng:</span>
-                        <span>{formatPrice(total)} đ</span>
+                        <span>{formattedBeTotal}</span>
                     </div>
                 </div>
 
@@ -430,7 +484,7 @@ const OrderDetailPage = () => {
                 )}
             </div>
 
-            {/* Popup hủy đơn */}
+            {/* Popup hủy đơn (giữ nguyên logic cũ) */}
             {showCancelModal && (
                 <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
                     <div className="bg-white w-full max-w-md rounded-lg shadow-lg p-6 relative">
