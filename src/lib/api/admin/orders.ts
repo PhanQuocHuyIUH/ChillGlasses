@@ -13,20 +13,21 @@ export interface GetOrdersParams extends PaginationParams {
   search?: string;
   startDate?: string;
   endDate?: string;
+  paymentStatus?: "UNPAID" | "PAID" | "REFUNDED";
 }
 
 /**
  * Admin Order API Service
- * Handles all order management operations
+ * Handles all order management operations with new dedicated admin endpoints
  */
 const adminOrderApi = {
   /**
-   * Get all orders with filtering (Admin only)
-   * GET /api/orders/admin/all
+   * Get all orders with advanced filtering (Admin only)
+   * GET /api/admin/orders
    */
   getAllOrders: async (params: GetOrdersParams = {}) => {
     const response = await axiosClient.get<ApiResponse<PageResponse<Order>>>(
-      "/orders/admin/all",
+      "/admin/orders",
       { params }
     );
     return response.data;
@@ -34,44 +35,96 @@ const adminOrderApi = {
 
   /**
    * Get order by ID (Admin only)
-   * GET /api/orders/{id}
+   * GET /api/admin/orders/{id}
    */
   getOrderById: async (id: number) => {
-    const response = await axiosClient.get<ApiResponse<Order>>(`/orders/${id}`);
-    return response.data;
-  },
-
-  /**
-   * Get order by order code (Admin only)
-   * GET /api/orders/code/{orderCode}
-   */
-  getOrderByCode: async (orderCode: string) => {
     const response = await axiosClient.get<ApiResponse<Order>>(
-      `/orders/code/${orderCode}`
+      `/admin/orders/${id}`
     );
     return response.data;
   },
 
   /**
    * Update order status (Admin only)
-   * PUT /api/orders/admin/{id}/status
+   * PUT /api/admin/orders/{id}/status
    */
   updateOrderStatus: async (id: number, data: UpdateOrderStatusRequest) => {
     const response = await axiosClient.put<ApiResponse<Order>>(
-      `/orders/admin/${id}/status`,
+      `/admin/orders/${id}/status`,
       data
     );
     return response.data;
   },
 
   /**
+   * Update payment status (Admin only)
+   * PUT /api/admin/orders/{id}/payment-status
+   */
+  updatePaymentStatus: async (
+    id: number,
+    paymentStatus: "UNPAID" | "PAID" | "REFUNDED"
+  ) => {
+    const response = await axiosClient.put<ApiResponse<Order>>(
+      `/admin/orders/${id}/payment-status`,
+      null,
+      { params: { paymentStatus } }
+    );
+    return response.data;
+  },
+
+  /**
+   * Confirm order - PENDING → CONFIRMED (Admin only)
+   * POST /api/admin/orders/{id}/confirm
+   */
+  confirmOrder: async (id: number) => {
+    const response = await axiosClient.post<ApiResponse<Order>>(
+      `/admin/orders/${id}/confirm`
+    );
+    return response.data;
+  },
+
+  /**
+   * Start processing order - CONFIRMED → PROCESSING (Admin only)
+   * POST /api/admin/orders/{id}/process
+   */
+  processOrder: async (id: number) => {
+    const response = await axiosClient.post<ApiResponse<Order>>(
+      `/admin/orders/${id}/process`
+    );
+    return response.data;
+  },
+
+  /**
+   * Ship order - PROCESSING → SHIPPING (Admin only)
+   * POST /api/admin/orders/{id}/ship
+   */
+  shipOrder: async (id: number) => {
+    const response = await axiosClient.post<ApiResponse<Order>>(
+      `/admin/orders/${id}/ship`
+    );
+    return response.data;
+  },
+
+  /**
+   * Deliver order - SHIPPING → DELIVERED (Admin only)
+   * POST /api/admin/orders/{id}/deliver
+   */
+  deliverOrder: async (id: number) => {
+    const response = await axiosClient.post<ApiResponse<Order>>(
+      `/admin/orders/${id}/deliver`
+    );
+    return response.data;
+  },
+
+  /**
    * Cancel order (Admin only)
-   * POST /api/orders/{id}/cancel
+   * POST /api/admin/orders/{id}/cancel
    */
   cancelOrder: async (id: number, reason: string) => {
     const response = await axiosClient.post<ApiResponse<Order>>(
-      `/orders/${id}/cancel`,
-      { reason }
+      `/admin/orders/${id}/cancel`,
+      null,
+      { params: { reason } }
     );
     return response.data;
   },
@@ -89,14 +142,13 @@ const adminOrderApi = {
   },
 
   /**
-   * Export orders to Excel (Admin only)
-   * GET /api/admin/orders/export
+   * Get order count by status (Admin only)
+   * GET /api/admin/orders/count-by-status
    */
-  exportOrders: async (params: GetOrdersParams = {}) => {
-    const response = await axiosClient.get("/admin/orders/export", {
-      params,
-      responseType: "blob",
-    });
+  getOrderCountByStatus: async () => {
+    const response = await axiosClient.get<
+      ApiResponse<Record<OrderStatus, number>>
+    >("/admin/orders/count-by-status");
     return response.data;
   },
 };
