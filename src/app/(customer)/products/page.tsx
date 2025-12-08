@@ -57,7 +57,7 @@ const PromotionPage = () => {
   );
 
   return (
-    <div className="text-black container mx-auto py-8 pt-24">
+    <div className="text-black w-full max-w-6xl mx-auto py-8 pt-24">
       <h1 className="text-3xl font-bold text-center mb-8">
         SẢN PHẨM ĐANG GIẢM GIÁ
       </h1>
