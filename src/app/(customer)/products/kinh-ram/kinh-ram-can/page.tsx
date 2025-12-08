@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+// Sử dụng hàm lấy theo category để tối ưu hiệu năng thay vì getAllProducts
 import { getProductsByCategory } from "@/lib/api/products";
 import { Product } from "@/types/product";
 
-const CATEGORY_ID = 2; // ID cho Kính Râm
+const CATEGORY_ID = 6; // ID cho Kính Râm Cận
 
-export default function KinhRamPage() {
+export default function KinhRamCanPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,9 +19,9 @@ export default function KinhRamPage() {
       try {
         setLoading(true);
 
-        // Gọi API lấy riêng danh mục Kính Râm
+        // Gọi API lấy riêng danh mục Kính Râm Cận
         const data = await getProductsByCategory(CATEGORY_ID);
-        console.log("Dữ liệu Kính Râm:", data);
+        console.log("Dữ liệu Kính Râm Cận:", data);
 
         // Kiểm tra an toàn: Đảm bảo data là mảng trước khi set state
         if (Array.isArray(data)) {
@@ -29,6 +30,7 @@ export default function KinhRamPage() {
           console.error("Dữ liệu trả về không phải mảng:", data);
           setProducts([]); // Fallback về mảng rỗng để không lỗi giao diện
         }
+
       } catch (err) {
         console.error("Error fetching products:", err);
         setError("Không thể tải sản phẩm. Vui lòng thử lại sau.");
@@ -45,7 +47,9 @@ export default function KinhRamPage() {
 
   return (
     <div className="text-black container mx-auto py-8">
-      <h1 className="text-3xl font-bold text-center mb-8">KÍNH RÂM</h1>
+      <h1 className="text-3xl font-bold text-center mb-8">
+        KÍNH RÂM CẬN
+      </h1>
 
       {products.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -56,7 +60,7 @@ export default function KinhRamPage() {
               className="border rounded p-4 shadow hover:shadow-lg transition-shadow block"
             >
               <Image
-                src={product.primaryImageUrl || "/images/placeholder.jpg"}
+                src={product.primaryImageUrl}
                 alt={product.name}
                 width={200}
                 height={200}
@@ -65,13 +69,15 @@ export default function KinhRamPage() {
 
               <h2 className="font-bold mt-2 text-lg">{product.name}</h2>
 
-              <p className="text-gray-600 mt-1">{product.formattedPrice}</p>
+              <p className="text-gray-600 mt-1">
+                 {product.formattedPrice}
+              </p>
             </Link>
           ))}
         </div>
       ) : (
         <div className="text-center py-8 text-gray-500">
-          Hiện tại chưa có sản phẩm Kính Râm nào.
+          Hiện tại chưa có sản phẩm Kính Râm Cận nào.
         </div>
       )}
     </div>

@@ -37,22 +37,27 @@ export default function Home() {
     fetchData();
   }, []);
 
-  // Function to render product images safely
-  const renderProductImage = (product: Product) => {
-    return (
-      <Image
-        src={product.primaryImageUrl || "/images/placeholder.jpg"}
-        alt={product.name}
-        width={160}
-        height={160}
-        className="w-full h-40 object-cover rounded"
-        onError={(e) => {
-          (e.target as HTMLImageElement).src = "/images/placeholder.jpg";
-          console.warn(`Failed to load image for product: ${product.name}`);
-        }}
-      />
-    );
-  };
+      const renderProductImage = (product: Product) => {
+      // Find the primary image from the images array
+      const primaryImage = product.images.find((image) => image.isPrimary);
+
+      // Use the primary image URL or fallback to the placeholder image
+      const imageUrl = primaryImage?.imageUrl || "/images/placeholder.jpg";
+
+      return (
+        <Image
+          src={imageUrl}
+          alt={product.name}
+          width={160}
+          height={160}
+          className="w-full h-40 object-cover rounded"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = "/images/placeholder.jpg";
+            console.warn(`Failed to load image for product: ${product.name}`);
+          }}
+        />
+      );
+    };
 
   return (
     <div className="flex flex-col min-h-screen font-sans bg-amber-50 text-black">
