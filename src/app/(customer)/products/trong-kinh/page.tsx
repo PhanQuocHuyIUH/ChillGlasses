@@ -41,7 +41,7 @@ export default function GongKinhPage() {
   if (loading) return <div className="text-center py-10">Đang tải...</div>;
 
   return (
-    <div className="container mx-auto py-8 text-black">
+    <div className="w-full max-w-6xl mx-auto py-8 text-black">
       <h1 className="text-3xl font-bold mb-6 text-center">Tròng kính</h1>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6">

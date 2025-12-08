@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Product } from "@/types/product";
+import Link from "next/link";
 
 const ResultPage = () => {
   const searchParams = useSearchParams();
@@ -92,8 +93,8 @@ const ResultPage = () => {
           ).values(),
         ];
         setCategories(uniqueCategories);
-      } catch (err: any) {
-        setError(err.message || "Unexpected error");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Unexpected error");
       } finally {
         setLoading(false);
       }
@@ -102,14 +103,14 @@ const ResultPage = () => {
     fetchProducts();
   }, [filters]);
 
-  const updateFilter = (key: string, value: any) => {
+  const updateFilter = (key: string, value: unknown) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="w-full max-w-6xl mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6 text-center">
-        Kết quả tìm kiếm cho "{searchTerm}"
+        Kết quả tìm kiếm cho &quot;{searchTerm}&quot
       </h1>
 
       {/* Filters */}
@@ -201,7 +202,11 @@ const ResultPage = () => {
       ) : products.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           {products.map((product) => (
-            <div key={product.id} className="border p-4 rounded shadow">
+            <Link
+              key={product.id}
+              href={`/products/${product.id}`}
+              className="border p-4 rounded shadow hover:shadow-lg"
+            >
               <Image
                 src={product.primaryImageUrl || "/images/placeholder.jpg"}
                 alt={product.name}
@@ -222,7 +227,7 @@ const ResultPage = () => {
 
               <p className="text-sm text-gray-500">{product.brand}</p>
               <p className="text-sm">Kho: {product.stockQuantity}</p>
-            </div>
+            </Link>
           ))}
         </div>
       ) : (

@@ -167,6 +167,11 @@ const Header = () => {
               placeholder="Tìm kiếm..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleSearch(); // <-- Nhấn Enter trong input để tìm
+                }
+              }}
               className="outline-none px-2 text-sm"
             />
             <button
