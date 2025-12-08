@@ -2,52 +2,64 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Product } from "@/types/product";
 import Image from "next/image";
+import { Product } from "@/types/product";
 
 const ResultPage = () => {
   const searchParams = useSearchParams();
   const searchTerm = searchParams.get("search") || "";
 
+  useEffect(() => {
+    setFilters((prev) => ({
+      ...prev,
+      keyword: searchTerm,
+    }));
+  }, [searchTerm]);
+
   const [products, setProducts] = useState<Product[]>([]);
   const [brands, setBrands] = useState<string[]>([]);
-  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
+  const [categories, setCategories] = useState<
+    { id: number; name: string }[]
+  >([]);
 
   const [filters, setFilters] = useState({
-    searchTerm,
+    keyword: searchTerm,
     brand: "",
-    categoryName: "",
+    categoryId: "",
     minPrice: "",
     maxPrice: "",
     inStock: false,
+    sortBy: "createdAt",
+    sortDir: "desc",
   });
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch products based on filters
+  // Fetch products
   useEffect(() => {
     const fetchProducts = async () => {
-      setLoading(true);
-      setError(null);
-
       try {
+        setLoading(true);
+        setError(null);
+
         const query = new URLSearchParams();
 
-        if (filters.searchTerm) query.append("keyword", filters.searchTerm);
+        if (filters.keyword) query.append("keyword", filters.keyword);
         if (filters.brand) query.append("brand", filters.brand);
-        if (filters.categoryName) query.append("category", filters.categoryName);
+        if (filters.categoryId) query.append("categoryId", filters.categoryId);
         if (filters.minPrice) query.append("minPrice", filters.minPrice);
         if (filters.maxPrice) query.append("maxPrice", filters.maxPrice);
         if (filters.inStock) query.append("inStock", "true");
 
         query.append("page", "0");
-        query.append("size", "10");
-        query.append("sortBy", "id");
-        query.append("sortDir", "asc");
+        query.append("size", "20");
+
+        query.append("sortBy", filters.sortBy);
+        query.append("sortDir", filters.sortDir);
 
         const response = await fetch(
-          `http://localhost:8080/api/products/search?${query.toString()}`
+          `http://localhost:8080/api/products?${query.toString()}`
         );
 
         if (!response.ok) {
@@ -55,19 +67,27 @@ const ResultPage = () => {
         }
 
         const data = await response.json();
-        const list = data.content || [];
+
+        // ✔ FIX: lấy đúng cấu trúc API backend
+        const list = data?.data?.content || [];
+
         setProducts(list);
 
-        // Extract unique brands
-        const uniqueBrands = [...new Set(list.map((p: Product) => p.brand))].filter(Boolean);
+        // ✔ Unique brand list
+        const uniqueBrands = [
+          ...new Set(list.map((p: Product) => p.brand)),
+        ].filter(Boolean);
         setBrands(uniqueBrands);
 
-        // Extract unique categories
+        // ✔ Unique category list
         const uniqueCategories = [
           ...new Map(
             list.map((p: Product) => [
               p.categoryId,
-              { id: p.categoryId, name: p.categoryName },
+              {
+                id: p.categoryId,
+                name: p.categoryName,
+              },
             ])
           ).values(),
         ];
@@ -82,23 +102,21 @@ const ResultPage = () => {
     fetchProducts();
   }, [filters]);
 
-  // Update filter state
   const updateFilter = (key: string, value: any) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
   return (
     <div className="container mx-auto py-8">
-      {/* Header */}
       <h1 className="text-3xl font-bold mb-6 text-center">
-        Kết quả tìm kiếm cho &quot;{searchTerm}&quot;
+        Kết quả tìm kiếm cho "{searchTerm}"
       </h1>
 
-      {/* Filter UI */}
+      {/* Filters */}
       <div className="flex flex-wrap items-center gap-4 mb-6">
         {/* Brand */}
         <select
-          className="border px-3 py-2 rounded w-full md:w-auto flex-1"
+          className="border px-3 py-2 rounded"
           value={filters.brand}
           onChange={(e) => updateFilter("brand", e.target.value)}
         >
@@ -112,13 +130,13 @@ const ResultPage = () => {
 
         {/* Category */}
         <select
-          className="border px-3 py-2 rounded w-full md:w-auto flex-1"
-          value={filters.categoryName}
-          onChange={(e) => updateFilter("categoryName", e.target.value)}
+          className="border px-3 py-2 rounded"
+          value={filters.categoryId}
+          onChange={(e) => updateFilter("categoryId", e.target.value)}
         >
           <option value="">Danh mục</option>
           {categories.map((c) => (
-            <option key={c.id} value={c.name}>
+            <option key={c.id} value={String(c.id)}>
               {c.name}
             </option>
           ))}
@@ -138,7 +156,7 @@ const ResultPage = () => {
         <input
           type="number"
           placeholder="Giá thấp nhất"
-          className="border px-3 py-2 rounded w-full md:w-auto flex-1"
+          className="border px-3 py-2 rounded"
           value={filters.minPrice}
           onChange={(e) => updateFilter("minPrice", e.target.value)}
         />
@@ -147,18 +165,35 @@ const ResultPage = () => {
         <input
           type="number"
           placeholder="Giá cao nhất"
-          className="border px-3 py-2 rounded w-full md:w-auto flex-1"
+          className="border px-3 py-2 rounded"
           value={filters.maxPrice}
           onChange={(e) => updateFilter("maxPrice", e.target.value)}
         />
+
+        {/* Sort */}
+        <select
+          className="border px-3 py-2 rounded"
+          value={filters.sortBy}
+          onChange={(e) => updateFilter("sortBy", e.target.value)}
+        >
+          <option value="createdAt">Mới nhất</option>
+          <option value="price">Giá</option>
+          <option value="rating">Đánh giá</option>
+          <option value="name">Tên</option>
+        </select>
+
+        <select
+          className="border px-3 py-2 rounded"
+          value={filters.sortDir}
+          onChange={(e) => updateFilter("sortDir", e.target.value)}
+        >
+          <option value="asc">Tăng</option>
+          <option value="desc">Giảm</option>
+        </select>
       </div>
 
-      {/* Error Message */}
-      {error && (
-        <div className="text-center py-4 text-red-500">
-          Lỗi: {error}
-        </div>
-      )}
+      {/* Error */}
+      {error && <p className="text-red-500 text-center">{error}</p>}
 
       {/* Product List */}
       {loading ? (
@@ -173,26 +208,25 @@ const ResultPage = () => {
                 width={160}
                 height={160}
                 className="w-full h-40 object-cover rounded"
+                unoptimized
               />
-
               <h2 className="font-bold mt-2">{product.name}</h2>
-              <p className="text-gray-600">{product.formattedPrice}</p>
 
+              {/* Price */}
+              <p className="text-gray-600">{product.formattedPrice}</p>
               {product.originalPrice > product.price && (
-                <p className="text-sm text-red-500 line-through">
+                <p className="text-red-500 line-through text-sm">
                   {product.formattedOriginalPrice}
                 </p>
               )}
 
               <p className="text-sm text-gray-500">{product.brand}</p>
-              <p className="text-sm text-gray-500">
-                Còn lại: {product.stockQuantity}
-              </p>
+              <p className="text-sm">Kho: {product.stockQuantity}</p>
             </div>
           ))}
         </div>
       ) : (
-        <div className="text-center py-10 text-gray-500">
+        <div className="text-center text-gray-500 py-10">
           Không tìm thấy sản phẩm nào.
         </div>
       )}
