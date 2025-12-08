@@ -159,17 +159,19 @@ export interface Order {
   id: number;
   orderCode: string;
   userId: number;
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
+  userFullName: string;
+  userEmail: string;
+  orderDate: string;
   shippingAddress: string;
+  shippingMethod: string;
   totalAmount: number;
   shippingFee: number;
-  finalAmount: number;
-  orderStatus: OrderStatus;
+  status: OrderStatus;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
-  orderItems: OrderItem[];
+  notes?: string;
+  items: OrderItem[];
+  totalItems: number;
   createdAt: string;
   updatedAt: string;
 }
