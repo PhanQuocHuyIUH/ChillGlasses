@@ -110,7 +110,7 @@ const ResultPage = () => {
   return (
     <div className="w-full max-w-6xl mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6 text-center">
-        Kết quả tìm kiếm cho &quot;{searchTerm}&quot
+        Kết quả tìm kiếm cho &quot;{searchTerm}&quot;
       </h1>
 
       {/* Filters */}
