@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import ChatBot from "@/components/chat/ChatBot";
 
 export const metadata: Metadata = {
   title: "Chill Glasses",
@@ -16,6 +17,7 @@ export default function RootLayout({
       <body className="flex w-full flex-col items-center">
         <div className="relative flex w-full flex-col items-center">
           <main className="w-full overflow-hidden pt-16 pb-16">{children}</main>
+          <ChatBot />
         </div>
       </body>
     </html>

@@ -70,18 +70,26 @@ export default function Home() {
       <main className="flex-1 w-full max-w-6xl mx-auto px-4 pb-20">
         {/* Banner */}
         <section className="w-full bg-linear-to-r from-blue-500 to-indigo-500 text-white py-16 text-center rounded-b-lg shadow-md mb-8">
-          <h1 className="text-4xl font-bold">Chào mừng đến với Chill Glasses</h1>
-          <p className="mt-4 text-lg">Khám phá các sản phẩm kính thời trang và chất lượng cao</p>
+          <h1 className="text-4xl font-bold">
+            Chào mừng đến với Chill Glasses
+          </h1>
+          <p className="mt-4 text-lg">
+            Khám phá các sản phẩm kính thời trang và chất lượng cao
+          </p>
         </section>
 
         {/* Loading State */}
         {loading ? (
-          <div className="text-center py-20 text-gray-500">Đang tải dữ liệu sản phẩm...</div>
+          <div className="text-center py-20 text-gray-500">
+            Đang tải dữ liệu sản phẩm...
+          </div>
         ) : (
           <>
             {/* Featured Products */}
             <section className="py-12">
-              <h2 className="text-2xl font-bold text-center mb-8">Sản phẩm nổi bật</h2>
+              <h2 className="text-2xl font-bold text-center mb-8">
+                Sản phẩm nổi bật
+              </h2>
 
               {products.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
@@ -93,14 +101,20 @@ export default function Home() {
                     >
                       <div>
                         {renderProductImage(product)}
-                        <h3 className="text-lg font-bold mt-4 line-clamp-1">{product.name}</h3>
-                        <p className="text-red-600 font-bold mt-2">{product.formattedPrice}</p>
+                        <h3 className="text-lg font-bold mt-4 line-clamp-1">
+                          {product.name}
+                        </h3>
+                        <p className="text-red-600 font-bold mt-2">
+                          {product.formattedPrice}
+                        </p>
                       </div>
                     </Link>
                   ))}
                 </div>
               ) : (
-                <p className="text-center text-gray-500">Chưa có sản phẩm nào.</p>
+                <p className="text-center text-gray-500">
+                  Chưa có sản phẩm nào.
+                </p>
               )}
             </section>
 
@@ -108,7 +122,9 @@ export default function Home() {
             <section className="w-full bg-linear-to-r from-red-500 to-yellow-500 text-white py-16 text-center rounded-lg shadow-lg">
               <div className="max-w-6xl mx-auto px-4">
                 <h2 className="text-3xl font-bold">Khuyến mãi hấp dẫn</h2>
-                <p className="mt-4 text-lg">Giảm giá cực sốc cho các sản phẩm kính thời trang</p>
+                <p className="mt-4 text-lg">
+                  Giảm giá cực sốc cho các sản phẩm kính thời trang
+                </p>
 
                 <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                   {products.length > 4 ? (
@@ -120,13 +136,17 @@ export default function Home() {
                       >
                         <div>
                           {renderProductImage(product)}
-                          <h3 className="text-lg font-bold mt-4 line-clamp-1">{product.name}</h3>
+                          <h3 className="text-lg font-bold mt-4 line-clamp-1">
+                            {product.name}
+                          </h3>
 
                           <div className="mt-2">
                             <p className="text-gray-400 text-sm line-through">
                               {(product.originalPrice).toLocaleString("vi-VN")}đ
                             </p>
-                            <p className="text-red-500 font-bold text-lg">{product.formattedPrice}</p>
+                            <p className="text-red-500 font-bold text-lg">
+                              {product.formattedPrice}
+                            </p>
                           </div>
                         </div>
                       </Link>
