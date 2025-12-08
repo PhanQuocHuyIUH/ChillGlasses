@@ -1,11 +1,20 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Send, Loader2, Sparkles } from "lucide-react";
+import {
+  MessageCircle,
+  X,
+  Send,
+  Loader2,
+  Sparkles,
+  ExternalLink,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import axios from "@/lib/api/axios";
+import Link from "next/link";
+import Image from "next/image";
 
 interface Message {
   id: string;
@@ -18,6 +27,8 @@ interface Message {
 interface ProductSuggestion {
   productId: number;
   productName: string;
+  productSlug?: string;
+  productUrl?: string;
   imageUrl: string;
   price: number;
   reason: string;
@@ -98,27 +109,33 @@ export default function ChatBot() {
       };
 
       setMessages((prev) => [...prev, botMessage]);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as {
+        message?: string;
+        response?: { data?: unknown; status?: number };
+        config?: { url?: string; method?: string; baseURL?: string };
+        code?: string;
+      };
       console.error("ChatBot Error Details:", {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
         config: {
-          url: error.config?.url,
-          method: error.config?.method,
-          baseURL: error.config?.baseURL,
+          url: err.config?.url,
+          method: err.config?.method,
+          baseURL: err.config?.baseURL,
         },
       });
 
       let errorContent = "❌ Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại sau.";
 
-      if (error.response?.status === 404) {
+      if (err.response?.status === 404) {
         errorContent =
           "❌ Không tìm thấy API endpoint. Vui lòng kiểm tra backend.";
-      } else if (error.response?.status === 500) {
+      } else if (err.response?.status === 500) {
         errorContent =
           "❌ Lỗi server. Có thể thiếu OpenAI API key hoặc backend chưa chạy.";
-      } else if (error.code === "ERR_NETWORK") {
+      } else if (err.code === "ERR_NETWORK") {
         errorContent =
           "❌ Không kết nối được backend. Đảm bảo backend đang chạy ở http://localhost:8080";
       }
@@ -149,6 +166,45 @@ export default function ChatBot() {
     });
   };
 
+  // Convert [PRODUCT_ID:123] to clickable product links
+  const renderMessageContent = (content: string) => {
+    // Regex to match product ID pattern: [PRODUCT_ID:123]
+    const productIdRegex = /\[PRODUCT_ID:(\d+)\]/g;
+    const parts: (string | React.ReactElement)[] = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = productIdRegex.exec(content)) !== null) {
+      // Add text before the product link
+      if (match.index > lastIndex) {
+        parts.push(content.substring(lastIndex, match.index));
+      }
+
+      // Add the product link
+      const productId = match[1];
+      const productUrl = `/products/${productId}`;
+      parts.push(
+        <Link
+          key={match.index}
+          href={productUrl}
+          className="text-blue-600 hover:text-blue-800 underline font-medium inline-flex items-center gap-1"
+        >
+          sản phẩm này
+          <ExternalLink className="h-3 w-3 inline" />
+        </Link>
+      );
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text
+    if (lastIndex < content.length) {
+      parts.push(content.substring(lastIndex));
+    }
+
+    return parts.length > 0 ? parts : content;
+  };
+
   return (
     <>
       {/* Floating Button */}
@@ -156,7 +212,7 @@ export default function ChatBot() {
         {!isOpen && (
           <Button
             onClick={() => setIsOpen(true)}
-            className="h-16 w-16 rounded-full shadow-2xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-300 hover:scale-110"
+            className="h-16 w-16 rounded-full shadow-2xl bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-300 hover:scale-110"
           >
             <MessageCircle className="h-8 w-8 text-white" />
           </Button>
@@ -166,7 +222,7 @@ export default function ChatBot() {
         {isOpen && (
           <Card className="w-96 h-[600px] shadow-2xl flex flex-col animate-in slide-in-from-bottom-5 duration-300">
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-t-lg flex items-center justify-between">
+            <div className="bg-linear-to-r from-blue-600 to-purple-600 text-white p-4 rounded-t-lg flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="relative">
                   <Sparkles className="h-6 w-6" />
@@ -201,13 +257,13 @@ export default function ChatBot() {
                     <div
                       className={`max-w-[80%] rounded-2xl p-3 ${
                         message.type === "user"
-                          ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                          ? "bg-linear-to-r from-blue-600 to-purple-600 text-white"
                           : "bg-white shadow-md border border-gray-100"
                       }`}
                     >
-                      <p className="whitespace-pre-wrap text-sm">
-                        {message.content}
-                      </p>
+                      <div className="whitespace-pre-wrap text-sm">
+                        {renderMessageContent(message.content)}
+                      </div>
                       <span
                         className={`text-xs mt-1 block ${
                           message.type === "user"
@@ -227,36 +283,52 @@ export default function ChatBot() {
                         <p className="text-xs text-gray-500 font-medium">
                           💡 Gợi ý sản phẩm:
                         </p>
-                        {message.productSuggestions.map((product) => (
-                          <Card
-                            key={product.productId}
-                            className="p-3 hover:shadow-lg transition-shadow cursor-pointer"
-                          >
-                            <div className="flex gap-3">
-                              {product.imageUrl && (
-                                <img
-                                  src={product.imageUrl}
-                                  alt={product.productName}
-                                  className="w-16 h-16 object-cover rounded-lg"
-                                />
-                              )}
-                              <div className="flex-1">
-                                <h4 className="font-semibold text-sm text-gray-800">
-                                  {product.productName}
-                                </h4>
-                                <p className="text-blue-600 font-bold text-sm">
-                                  {new Intl.NumberFormat("vi-VN", {
-                                    style: "currency",
-                                    currency: "VND",
-                                  }).format(product.price)}
-                                </p>
-                                <p className="text-xs text-gray-600 mt-1">
-                                  {product.reason}
-                                </p>
-                              </div>
-                            </div>
-                          </Card>
-                        ))}
+                        {message.productSuggestions.map((product) => {
+                          const productLink =
+                            product.productUrl ||
+                            `/products/${
+                              product.productSlug || product.productId
+                            }`;
+
+                          return (
+                            <Link
+                              key={product.productId}
+                              href={productLink}
+                              target="_blank"
+                            >
+                              <Card className="p-3 hover:shadow-lg transition-all cursor-pointer hover:border-blue-500">
+                                <div className="flex gap-3">
+                                  {product.imageUrl && (
+                                    <Image
+                                      src={product.imageUrl}
+                                      alt={product.productName}
+                                      width={64}
+                                      height={64}
+                                      className="w-16 h-16 object-cover rounded-lg"
+                                    />
+                                  )}
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-1">
+                                      <h4 className="font-semibold text-sm text-gray-800">
+                                        {product.productName}
+                                      </h4>
+                                      <ExternalLink className="h-3 w-3 text-blue-500" />
+                                    </div>
+                                    <p className="text-blue-600 font-bold text-sm">
+                                      {new Intl.NumberFormat("vi-VN", {
+                                        style: "currency",
+                                        currency: "VND",
+                                      }).format(product.price)}
+                                    </p>
+                                    <p className="text-xs text-gray-600 mt-1">
+                                      {product.reason}
+                                    </p>
+                                  </div>
+                                </div>
+                              </Card>
+                            </Link>
+                          );
+                        })}
                       </div>
                     )}
                 </div>
@@ -286,7 +358,7 @@ export default function ChatBot() {
                 <Button
                   onClick={handleSendMessage}
                   disabled={isLoading || !inputValue.trim()}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                 >
                   <Send className="h-5 w-5" />
                 </Button>
