@@ -59,7 +59,7 @@ export default function KinhRamPage() {
               <Link
                 key={product.id}
                 href={`/products/${product.id}`}
-                className="border rounded p-4 shadow hover:shadow-lg transition-shadow block"
+                className="border rounded hover:-translate-y-1 p-4 shadow hover:shadow-lg transition-shadow block"
               >
                 <Image
                   src={product.primaryImageUrl || "/images/placeholder.jpg"}

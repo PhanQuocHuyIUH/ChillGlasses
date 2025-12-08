@@ -42,14 +42,14 @@ export default function TrongKinhDoiMauPage() {
 
   return (
     <div className="w-full max-w-6xl mx-auto py-8 text-black">
-      <h1 className="text-3xl font-bold mb-6 text-center">Tròng Kính Đổi Màu</h1>
+      <h1 className="text-3xl font-bold mb-6 text-center">TRÒNG KÍNH ĐỔI MÀU</h1>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
         {products.slice(0, visibleProducts).map((product) => (
           <Link
             key={product.id}
             href={`/products/${product.id}`}
-            className="border p-4 rounded shadow hover:shadow-lg"
+            className="border p-4 hover:-translate-y-1 rounded shadow hover:shadow-lg"
           >
             <Image
               src={product.primaryImageUrl || "/images/placeholder.jpg"}
