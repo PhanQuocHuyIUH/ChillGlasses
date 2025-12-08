@@ -10,6 +10,7 @@ export interface Product {
   formattedOriginalPrice: string;
 
   brand: string;
+  brandName: string;
 
   categoryId: number;
   categoryName: string;
@@ -38,7 +39,11 @@ export interface ProductImage {
 }
 
 export interface ProductFilterValues {
+  searchTerm: string;
+
   categoryId?: number;
+  categoryName: string;
+
   brand?: string;
 
   minPrice?: number;
