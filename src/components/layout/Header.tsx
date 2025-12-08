@@ -9,46 +9,22 @@ import { useRouter } from "next/navigation";
 import { requireLogin } from "@/lib/authClient";
 
 const Header = () => {
-  const [filters, setFilters] = useState({
-    price: "",
-    brand: "",
-    style: "",
-    material: "",
-  });
-
-  const [sort, setSort] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null); // Track active dropdown
 
   const router = useRouter();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const token = localStorage.getItem("token");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (token) setIsLoggedIn(true);
   }, []);
 
-  const handleFilterChange = (key: string, value: string) => {
-    setFilters((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
-  };
-
-  const handleSortChange = (value: string) => {
-    setSort(value);
-  };
-
   const handleSearch = () => {
-    console.log("Từ khóa tìm kiếm:", searchTerm);
-    console.log("Filters:", filters);
-    console.log("Sort:", sort);
-    setShowFilters(true);
+    console.log("Tìm kiếm:", searchTerm);
   };
 
-  // 🛒 Click icon giỏ hàng → nếu chưa login thì chặn + đưa sang /login
   const handleCartClick = () => {
     const blocked = requireLogin({
       router,
@@ -64,6 +40,7 @@ const Header = () => {
   return (
     <header className="bg-white text-black w-full fixed h-20 top-0 z-50 shadow-md">
       <div className="container mx-auto flex justify-between items-center py-4 px-6">
+        
         {/* Logo */}
         <Link href="/" className="flex items-center">
           <Image
@@ -79,95 +56,84 @@ const Header = () => {
         {/* Menu */}
         <nav>
           <ul className="hidden md:flex space-x-6">
+
             {/* Gọng kính cận dropdown */}
-            <div
-              className="relative"
-              onMouseEnter={() => setActiveDropdown("gong-kinh")}
-              onMouseLeave={() => setActiveDropdown(null)}
-            >
+            <li className="relative group cursor-pointer">
+
+            {/* Nút chính */}
+            <Link href="/products/gong-kinh-can">
+              <button className="hover:bg-gray-100 hover:text-blue-500 font-bold px-8 py-2 rounded">
+                GỌNG KÍNH CẬN
+              </button>
+            </Link>
+
+            {/* Dropdown */}
+            <ul className="absolute left-0 mt-1 bg-white border rounded shadow-lg z-50 hidden group-hover:block">
               <li>
-                <Link href="/products/gong-kinh-can">
-                  <button className="hover:bg-gray-100 hover:text-blue-500 font-bold px-8 py-2 rounded">
-                    GỌNG KÍNH CẬN
-                  </button>
+                <Link
+                  href="/products/gong-kinh-can/gong-kinh-mat-meo"
+                  className="block px-8 py-2 hover:bg-gray-100 hover:text-blue-500 font-bold whitespace-nowrap"
+                >
+                  GỌNG KÍNH MẮT MÈO
                 </Link>
               </li>
 
-              {activeDropdown === "gong-kinh" && (
-                <ul className="absolute left-0 mt-2 bg-white border rounded shadow-lg z-50">
-                  <li>
-                    <Link
-                      href="/products/gong-kinh-can/gong-kinh-mat-meo"
-                      className="block px-8 py-2 hover:bg-gray-100 hover:text-blue-500 font-bold whitespace-nowrap"
-                    >
-                      GỌNG KÍNH MẮT MÈO
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/products/gong-kinh-can/gong-kinh-titan"
-                      className="block px-8 py-2 hover:bg-gray-100 hover:text-blue-500 font-bold whitespace-nowrap"
-                    >
-                      GỌNG KÍNH TITAN CAO CẤP
-                    </Link>
-                  </li>
-                </ul>
-              )}
-            </div>
+              <li>
+                <Link
+                  href="/products/gong-kinh-can/gong-kinh-titan"
+                  className="block px-8 py-2 hover:bg-gray-100 hover:text-blue-500 font-bold whitespace-nowrap"
+                >
+                  GỌNG KÍNH TITAN CAO CẤP
+                </Link>
+              </li>
+            </ul>
+
+          </li>
+
 
             {/* Kính râm dropdown */}
-            <div
-              className="relative"
-              onMouseEnter={() => setActiveDropdown("kinh-ram")}
-              onMouseLeave={() => setActiveDropdown(null)}
-            >
+           <li className="relative group cursor-pointer">
+            <Link href="/products/kinh-ram">
               <button className="hover:bg-gray-100 hover:text-blue-500 font-bold px-8 py-2 rounded">
-                <Link href="/products/kinh-ram">KÍNH RÂM</Link>
+                KÍNH RÂM
               </button>
+            </Link>
 
-              {activeDropdown === "kinh-ram" && (
-                <ul className="absolute left-0 mt-2 bg-white border rounded shadow-lg z-50">
-                  <li>
-                    <Link
-                      href="/products/kinh-ram/kinh-ram-can"
-                      className="block px-8 py-2 hover:bg-gray-100 hover:text-blue-500 font-bold whitespace-nowrap"
-                    >
-                      KÍNH RÂM CẬN
-                    </Link>
-                  </li>
-                </ul>
-              )}
-            </div>
-
-            {/* Tròng kính dropdown */}
-            <div
-              className="relative"
-              onMouseEnter={() => setActiveDropdown("trong-kinh")}
-              onMouseLeave={() => setActiveDropdown(null)}
-            >
+            <ul className="absolute left-0 bg-white border rounded shadow-lg z-50 hidden group-hover:block">
               <li>
-                <Link href="/products/trong-kinh">
-                  <button className="hover:bg-gray-100 hover:text-blue-500 font-bold px-8 py-2 rounded">
-                    TRÒNG KÍNH
-                  </button>
+                <Link
+                  href="/products/kinh-ram/kinh-ram-can"
+                  className="block px-8 py-2 hover:bg-gray-100 hover:text-blue-500 font-bold whitespace-nowrap"
+                >
+                  KÍNH RÂM CẬN
                 </Link>
               </li>
+            </ul>
 
-              {activeDropdown === "trong-kinh" && (
-                <ul className="absolute left-0 mt-2 bg-white border rounded shadow-lg z-50">
-                  <li>
-                    <Link
-                      href="/products/trong-kinh/trong-doi-mau"
-                      className="block px-8 py-2 hover:bg-gray-100 hover:text-blue-500 font-bold whitespace-nowrap"
-                    >
-                      TRÒNG ĐỔI MÀU
-                    </Link>
-                  </li>
-                </ul>
-              )}
-            </div>
+          </li>
 
-            {/* Không có dropdown */}
+
+            {/* Tròng kính dropdown */}
+            <li className="relative group cursor-pointer">
+              <Link href="/products/trong-kinh">
+                <button className="hover:bg-gray-100 hover:text-blue-500 font-bold px-8 py-2 rounded">
+                  TRÒNG KÍNH
+                </button>
+              </Link>
+
+              <ul className="absolute left-0 bg-white border rounded shadow-lg z-50 hidden group-hover:block">
+                <li>
+                  <Link
+                    href="/products/trong-kinh/trong-doi-mau"
+                    className="block px-8 py-2 hover:bg-gray-100 hover:text-blue-500 font-bold whitespace-nowrap"
+                  >
+                    TRÒNG ĐỔI MÀU
+                  </Link>
+                </li>
+              </ul>
+            </li>
+
+
             <li>
               <Link href="/products">
                 <button className="hover:bg-gray-100 hover:text-blue-500 font-bold px-8 py-2 rounded">
@@ -183,13 +149,14 @@ const Header = () => {
                 </button>
               </Link>
             </li>
+
           </ul>
         </nav>
 
-
-        {/* Search bar, cart, and login/user icons */}
+        {/* Search + Cart + Login */}
         <div className="flex items-center space-x-4">
-          {/* Search bar */}
+
+          {/* Search */}
           <div className="flex items-center border border-gray-300 rounded-md px-2 py-1">
             <FaSearch className="text-gray-500" />
             <input
@@ -207,7 +174,7 @@ const Header = () => {
             </button>
           </div>
 
-          {/* Shopping cart icon – dùng button + requireLogin */}
+          {/* Cart */}
           <button
             type="button"
             onClick={handleCartClick}
@@ -216,7 +183,7 @@ const Header = () => {
             <FaShoppingCart size={20} />
           </button>
 
-          {/* Login/User icon */}
+          {/* Login/User */}
           {isLoggedIn ? (
             <Link href="/profile">
               <button className="text-gray-500 hover:text-black flex items-center">

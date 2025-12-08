@@ -11,6 +11,7 @@ const CATEGORY_ID = 6; // ID cho Kính Râm Cận
 
 export default function KinhRamCanPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [visibleProducts, setVisibleProducts] = useState(8); // Number of products to display initially
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,7 +31,6 @@ export default function KinhRamCanPage() {
           console.error("Dữ liệu trả về không phải mảng:", data);
           setProducts([]); // Fallback về mảng rỗng để không lỗi giao diện
         }
-
       } catch (err) {
         console.error("Error fetching products:", err);
         setError("Không thể tải sản phẩm. Vui lòng thử lại sau.");
@@ -42,39 +42,52 @@ export default function KinhRamCanPage() {
     fetchProducts();
   }, []);
 
+  const handleLoadMore = () => {
+    setVisibleProducts((prev) => prev + 8); // Load 8 more products
+  };
+
   if (loading) return <div className="text-center py-8">Đang tải sản phẩm...</div>;
   if (error) return <div className="text-center py-8 text-red-500">{error}</div>;
 
   return (
     <div className="text-black container mx-auto py-8">
-      <h1 className="text-3xl font-bold text-center mb-8">
-        KÍNH RÂM CẬN
-      </h1>
+      <h1 className="text-3xl font-bold text-center mb-8">KÍNH RÂM CẬN</h1>
 
       {products.length > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {products.map((product) => (
-            <Link
-              key={product.id}
-              href={`/products/${product.id}`}
-              className="border rounded p-4 shadow hover:shadow-lg transition-shadow block"
-            >
-              <Image
-                src={product.primaryImageUrl}
-                alt={product.name}
-                width={200}
-                height={200}
-                className="w-full h-40 object-cover rounded"
-              />
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {products.slice(0, visibleProducts).map((product) => (
+              <Link
+                key={product.id}
+                href={`/products/${product.id}`}
+                className="border rounded p-4 shadow hover:shadow-lg transition-shadow block"
+              >
+                <Image
+                  src={product.primaryImageUrl || "/images/placeholder.jpg"}
+                  alt={product.name}
+                  width={200}
+                  height={200}
+                  className="w-full h-40 object-cover rounded"
+                />
 
-              <h2 className="font-bold mt-2 text-lg">{product.name}</h2>
+                <h2 className="font-bold mt-2 text-lg">{product.name}</h2>
 
-              <p className="text-gray-600 mt-1">
-                 {product.formattedPrice}
-              </p>
-            </Link>
-          ))}
-        </div>
+                <p className="text-gray-600 mt-1">{product.formattedPrice}</p>
+              </Link>
+            ))}
+          </div>
+
+          {visibleProducts < products.length && (
+            <div className="text-center mt-8">
+              <button
+                onClick={handleLoadMore}
+                className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600"
+              >
+                Xem thêm
+              </button>
+            </div>
+          )}
+        </>
       ) : (
         <div className="text-center py-8 text-gray-500">
           Hiện tại chưa có sản phẩm Kính Râm Cận nào.

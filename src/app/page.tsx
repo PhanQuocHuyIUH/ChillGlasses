@@ -9,11 +9,9 @@ import { Product } from "@/types/product";
 import Image from "next/image";
 
 export default function Home() {
-  // State to store products and loading state
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch products when the component mounts
   useEffect(() => {
     async function fetchData() {
       try {
@@ -22,7 +20,6 @@ export default function Home() {
 
         console.log("Fetched products:", data);
 
-        // Ensure the data is always an array
         if (Array.isArray(data)) {
           setProducts(data);
         } else {
@@ -37,27 +34,34 @@ export default function Home() {
     fetchData();
   }, []);
 
-      const renderProductImage = (product: Product) => {
-      // Find the primary image from the images array
-      const primaryImage = product.images.find((image) => image.isPrimary);
+  const renderProductImage = (product: Product) => {
+  // 1️⃣ primaryImageUrl (backend trả về)
+  let imageUrl = product.primaryImageUrl;
 
-      // Use the primary image URL or fallback to the placeholder image
-      const imageUrl = primaryImage?.imageUrl || "/images/placeholder.jpg";
+  // 2️⃣ Nếu chưa có → fallback ảnh trong mảng images
+  if ((!imageUrl || imageUrl.trim() === "") && Array.isArray(product.images)) {
+    const primaryImage = product.images.find((img) => img.isPrimary);
+    imageUrl = primaryImage?.imageUrl || "";
+  }
 
-      return (
-        <Image
-          src={imageUrl}
-          alt={product.name}
-          width={160}
-          height={160}
-          className="w-full h-40 object-cover rounded"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = "/images/placeholder.jpg";
-            console.warn(`Failed to load image for product: ${product.name}`);
-          }}
-        />
-      );
-    };
+  // 3️⃣ Cuối cùng fallback placeholder
+  if (!imageUrl || imageUrl.trim() === "") {
+    imageUrl = "/images/placeholder.jpg";
+  }
+
+    return (
+       <Image
+      src={imageUrl}
+      alt={product.name}
+      width={160}
+      height={160}
+      className="w-full h-40 object-cover rounded"
+      onError={(e) => {
+        (e.target as HTMLImageElement).src = "/images/placeholder.jpg";
+      }}
+    />
+    );
+  };
 
   return (
     <div className="flex flex-col min-h-screen font-sans bg-amber-50 text-black">
@@ -119,9 +123,8 @@ export default function Home() {
                           <h3 className="text-lg font-bold mt-4 line-clamp-1">{product.name}</h3>
 
                           <div className="mt-2">
-                            {/* Simulated original price */}
                             <p className="text-gray-400 text-sm line-through">
-                              {(product.price * 1.2).toLocaleString("vi-VN")}đ
+                              {(product.originalPrice).toLocaleString("vi-VN")}đ
                             </p>
                             <p className="text-red-500 font-bold text-lg">{product.formattedPrice}</p>
                           </div>
@@ -135,9 +138,11 @@ export default function Home() {
                   )}
                 </div>
 
-                <button className="mt-8 bg-white text-red-500 px-8 py-3 rounded-full font-bold hover:bg-gray-100 shadow-md transition">
-                  Xem tất cả khuyến mãi
-                </button>
+                <Link href="/products">
+                  <button className="mt-8 bg-white text-red-500 px-8 py-3 rounded-full font-bold hover:bg-gray-100 shadow-md transition">
+                    Xem tất cả khuyến mãi
+                  </button>
+                </Link>
               </div>
             </section>
           </>
