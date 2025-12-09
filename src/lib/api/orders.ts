@@ -10,7 +10,6 @@ export type OrderStatus =
   | "SHIPPING"
   | "DELIVERED"
   | "CANCELLED"
-  | "REFUNDED";
 
 export type PaymentMethodApi = "COD" | "BANK_TRANSFER" | "E_WALLET";
 
@@ -48,6 +47,10 @@ export interface OrderSummary {
   paymentStatus: string;
   totalItems: number;
   createdAt: string;
+  // 🔹 Bổ sung cho promotion – khớp OrderSummaryDTO bên BE
+  promotionCode?: string;
+  promotionDiscountAmount?: number;
+  formattedPromotionDiscountAmount?: string;
 }
 
 export interface OrderItem {
@@ -84,6 +87,11 @@ export interface OrderDetail {
   totalItems: number;
   createdAt: string;
   updatedAt: string;
+  // 🔹 Bổ sung cho promotion (khớp OrderDTO bên BE)
+  promotionCode?: string;
+  promotionDiscountAmount?: number;
+  formattedPromotionDiscountAmount?: string;
+  promotionDescription?: string;
 }
 
 export interface CreateOrderRequest {
