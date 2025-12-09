@@ -40,6 +40,7 @@ const AdminDashBoardPage = () => {
   // State for dashboard data
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [topProducts, setTopProducts] = useState<TopSellingProduct[]>([]);
+  const [revenueData, setRevenueData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [chartType, setChartType] = useState<"bar" | "pie">("bar");
@@ -47,6 +48,15 @@ const AdminDashBoardPage = () => {
   // Fetch dashboard stats on component mount
   useEffect(() => {
     fetchDashboardData();
+
+    // Auto-refresh every 5 minutes (300000ms)
+    const intervalId = setInterval(() => {
+      console.log("Auto-refreshing dashboard data...");
+      fetchDashboardData();
+    }, 300000);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(intervalId);
   }, []);
 
   /**
@@ -66,6 +76,18 @@ const AdminDashBoardPage = () => {
       // Fetch top 5 selling products
       const productsData = await adminStatisticsApi.getTopSellingProducts(5);
       setTopProducts(productsData);
+
+      // Fetch revenue data for last 7 days
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 6); // Last 7 days
+
+      const revenueStats = await adminStatisticsApi.getRevenueByPeriod(
+        startDate.toISOString().split("T")[0],
+        endDate.toISOString().split("T")[0],
+        "daily"
+      );
+      setRevenueData(revenueStats);
     } catch (err: any) {
       console.error("Error fetching dashboard data:", err);
 
@@ -98,24 +120,24 @@ const AdminDashBoardPage = () => {
     }
   };
 
-  // Chart data for revenue visualization (dummy data - can be replaced with real revenue API)
-  const revenueToday = stats?.revenueToday ?? 0;
+  // Chart data for revenue visualization using real API data
   const revenueChartData = {
-    labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    labels:
+      revenueData.length > 0
+        ? revenueData.map((item) => {
+            // item.period is "YYYY-MM-DD" format from backend
+            const dateStr = item.period || item.date;
+            const [year, month, day] = dateStr.split("-");
+            return `${day}/${month}`;
+          })
+        : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
     datasets: [
       {
         label: "Revenue (VNĐ)",
-        data: stats
-          ? [
-              revenueToday * 0.8,
-              revenueToday * 0.9,
-              revenueToday,
-              revenueToday * 1.1,
-              revenueToday * 1.2,
-              revenueToday * 1.3,
-              revenueToday * 1.4,
-            ]
-          : [],
+        data:
+          revenueData.length > 0
+            ? revenueData.map((item) => item.totalRevenue || 0)
+            : [],
         backgroundColor:
           chartType === "bar"
             ? "rgba(34, 197, 94, 0.6)"
@@ -199,7 +221,7 @@ const AdminDashBoardPage = () => {
             <div className="text-3xl font-bold text-gray-900">
               {(stats?.totalUsers ?? 0).toLocaleString()}
             </div>
-            <p className="text-sm text-green-600 mt-2 flex items-center gap-1">
+            <p className="text-sm text-gray-600 mt-2 flex items-center gap-1">
               <TrendingUp className="h-4 w-4" />+{stats?.newUsersToday ?? 0} new
               today
             </p>
