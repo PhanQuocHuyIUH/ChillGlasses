@@ -7,15 +7,15 @@ import type { ApiResponse, User } from "@/types/admin";
  * Dùng cho: profile, checkout, setting cá nhân,...
  */
 const userApi = {
-  /**
-   * Lấy profile user hiện tại
-   * GET /api/user/profile
-   */
-  getMyProfile: async () => {
-    const response = await axiosClient.get<ApiResponse<User>>("/user/profile");
-    // Giả định ApiResponse<User> có field .data
-    return response.data.data;
-  },
+    /**
+     * Lấy profile user hiện tại
+     * GET /api/user/profile
+     */
+    getMyProfile: async () => {
+        const response = await axiosClient.get<ApiResponse<User>>("/user/profile");
+        // Giả định ApiResponse<User> có field .data
+        return response.data.data;
+    },
 };
 
 export default userApi;
