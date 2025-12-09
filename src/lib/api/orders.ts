@@ -46,6 +46,11 @@ export interface OrderSummary {
     paymentStatus: string;
     totalItems: number;
     createdAt: string;
+
+    // 🔹 Bổ sung cho promotion – khớp OrderSummaryDTO bên BE
+    promotionCode?: string;
+    promotionDiscountAmount?: number;
+    formattedPromotionDiscountAmount?: string;
 }
 
 export interface OrderItem {
@@ -82,6 +87,12 @@ export interface OrderDetail {
     totalItems: number;
     createdAt: string;
     updatedAt: string;
+
+    // 🔹 Bổ sung cho promotion (khớp OrderDTO bên BE)
+    promotionCode?: string;
+    promotionDiscountAmount?: number;
+    formattedPromotionDiscountAmount?: string;
+    promotionDescription?: string;
 }
 
 export interface CreateOrderRequest {
@@ -149,7 +160,16 @@ export const getOrderDetail = async (
 /** ===== API: YÊU CẦU HỦY ĐƠN HÀNG =====
  * POST /api/orders/{id}/cancel
  * Lưu ý: hiện tại BE có thể đang KHÔNG đọc body → notes sẽ không được lưu DB.
+ * --> đã fix xong
  */
+
+/** ===== API: YÊU CẦU HỦY ĐƠN HÀNG =====
+ * POST /api/orders/{id}/cancel
+ * BE hiện tại ĐÃ đọc body:
+ *  - notes (chuỗi lý do đã gộp) sẽ được lưu vào order.notes.
+ *  - reasons & otherReason có thể dùng cho future enhancement.
+ */
+
 
 export interface CancelOrderPayload {
     notes?: string;          // Chuỗi lý do hủy đã gộp

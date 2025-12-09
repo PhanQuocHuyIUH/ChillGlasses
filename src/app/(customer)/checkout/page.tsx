@@ -8,6 +8,7 @@ import {
     PaymentMethodApi,
     ShippingMethodApi,
 } from "@/lib/api/orders";
+import userApi from "@/lib/api/user";
 
 const formatPrice = (value: number) => {
     return value.toLocaleString("vi-VN");
@@ -183,6 +184,33 @@ const CheckoutPage = () => {
         } catch (e) {
             console.warn("Không parse được user từ localStorage:", e);
         }
+    }, []);
+
+    // 2.1. Prefill info từ API /api/user/profile (ưu tiên dữ liệu mới nhất từ backend)
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const me = await userApi.getMyProfile();
+                if (!me) return;
+
+                if (me.fullName) setFullName(me.fullName);
+                if (me.phone) setPhone(me.phone ?? "");
+                if (me.email) setEmail(me.email);
+                if (me.address) setAddress(me.address ?? "");
+
+                // Optional: cache lại vào localStorage cho chỗ khác dùng
+                if (typeof window !== "undefined") {
+                    localStorage.setItem("user", JSON.stringify(me));
+                }
+            } catch (err) {
+                console.warn(
+                    "Không lấy được profile user từ API /user/profile:",
+                    err
+                );
+            }
+        };
+
+        fetchProfile();
     }, []);
 
     // 3. Tính toán từ cart + xử lý mode Mua ngay / Giỏ hàng
