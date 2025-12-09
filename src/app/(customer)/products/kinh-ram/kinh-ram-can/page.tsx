@@ -50,7 +50,7 @@ export default function KinhRamCanPage() {
   if (error) return <div className="text-center py-8 text-red-500">{error}</div>;
 
   return (
-    <div className="text-black container mx-auto py-8">
+    <div className="text-black w-full max-w-6xl mx-auto py-8">
       <h1 className="text-3xl font-bold text-center mb-8">KÍNH RÂM CẬN</h1>
 
       {products.length > 0 ? (
@@ -60,7 +60,7 @@ export default function KinhRamCanPage() {
               <Link
                 key={product.id}
                 href={`/products/${product.id}`}
-                className="border rounded p-4 shadow hover:shadow-lg transition-shadow block"
+                className="border hover:-translate-y-1 rounded p-4 shadow hover:shadow-lg transition-shadow block"
               >
                 <Image
                   src={product.primaryImageUrl || "/images/placeholder.jpg"}

@@ -26,8 +26,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { AlertTriangle, Loader2, Search } from "lucide-react";
 
 const OrderPage = () => {
-  const router = useRouter();
-
   // State management
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,16 +105,69 @@ const OrderPage = () => {
     }
   };
 
-  // Update order status
-  const handleStatusChange = async (id: number, newStatus: OrderStatus) => {
+  // Confirm order (PENDING → CONFIRMED)
+  const handleConfirmOrder = async (id: number) => {
+    if (!confirm("Xác nhận đơn hàng này?")) return;
+
     setActionLoading(id);
     try {
-      await adminOrderApi.updateOrderStatus(id, { status: newStatus });
-      await fetchOrders(); // Refresh list
-      alert("Cập nhật trạng thái đơn hàng thành công!");
+      await adminOrderApi.confirmOrder(id);
+      await fetchOrders();
+      alert("Đã xác nhận đơn hàng!");
     } catch (err: any) {
-      console.error("Error updating order status:", err);
-      alert(err.response?.data?.message || "Failed to update order status");
+      console.error("Error confirming order:", err);
+      alert(err.response?.data?.message || "Failed to confirm order");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Process order (CONFIRMED → PROCESSING)
+  const handleProcessOrder = async (id: number) => {
+    if (!confirm("Bắt đầu xử lý đơn hàng này?")) return;
+
+    setActionLoading(id);
+    try {
+      await adminOrderApi.processOrder(id);
+      await fetchOrders();
+      alert("Đơn hàng đang được xử lý!");
+    } catch (err: any) {
+      console.error("Error processing order:", err);
+      alert(err.response?.data?.message || "Failed to process order");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Ship order (PROCESSING → SHIPPING)
+  const handleShipOrder = async (id: number) => {
+    if (!confirm("Đơn hàng đã giao cho đơn vị vận chuyển?")) return;
+
+    setActionLoading(id);
+    try {
+      await adminOrderApi.shipOrder(id);
+      await fetchOrders();
+      alert("Đơn hàng đang được giao!");
+    } catch (err: any) {
+      console.error("Error shipping order:", err);
+      alert(err.response?.data?.message || "Failed to ship order");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Deliver order (SHIPPING → DELIVERED)
+  const handleDeliverOrder = async (id: number) => {
+    if (!confirm("Xác nhận đơn hàng đã giao thành công?")) return;
+
+    setActionLoading(id);
+    try {
+      await adminOrderApi.deliverOrder(id);
+      await fetchOrders();
+      alert("Đơn hàng đã giao thành công!");
+    } catch (err: any) {
+      console.error("Error delivering order:", err);
+      alert(err.response?.data?.message || "Failed to deliver order");
     } finally {
       setActionLoading(null);
     }
@@ -125,13 +176,13 @@ const OrderPage = () => {
   // Cancel order
   const handleCancelOrder = async (id: number) => {
     const reason = prompt("Nhập lý do hủy đơn hàng:");
-    if (!reason) return;
+    if (!reason || !reason.trim()) return;
 
     setActionLoading(id);
     try {
       await adminOrderApi.cancelOrder(id, reason);
       await fetchOrders();
-      alert("Hủy đơn hàng thành công!");
+      alert("Đã hủy đơn hàng!");
     } catch (err: any) {
       console.error("Error cancelling order:", err);
       alert(err.response?.data?.message || "Failed to cancel order");
@@ -140,12 +191,21 @@ const OrderPage = () => {
     }
   };
 
-  // Navigate to order details
-  const handleRowClick = (id: number) => {
-    // router.push(`/admin_orders/${id}`);
-    alert(
-      `View order details for ID: ${id} (Details page not implemented yet)`
-    );
+  // Update payment status
+  const handleUpdatePaymentStatus = async (id: number) => {
+    if (!confirm("Xác nhận đã nhận thanh toán cho đơn hàng này?")) return;
+
+    setActionLoading(id);
+    try {
+      await adminOrderApi.updatePaymentStatus(id, "PAID");
+      await fetchOrders();
+      alert("Đã cập nhật trạng thái thanh toán!");
+    } catch (err: any) {
+      console.error("Error updating payment status:", err);
+      alert(err.response?.data?.message || "Failed to update payment status");
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   // Get status badge variant
@@ -262,19 +322,16 @@ const OrderPage = () => {
               <TableHead>Khách hàng</TableHead>
               <TableHead>Ngày đặt</TableHead>
               <TableHead>Tổng tiền</TableHead>
-              <TableHead>Trạng thái</TableHead>
+              <TableHead>Trạng thái đơn</TableHead>
+              <TableHead>Thanh toán</TableHead>
               <TableHead className="text-center">Hành động</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {orders.map((order) => (
-              <TableRow
-                key={order.id}
-                className="cursor-pointer"
-                onClick={() => handleRowClick(order.id)}
-              >
+              <TableRow key={order.id}>
                 <TableCell className="font-medium">{order.orderCode}</TableCell>
-                <TableCell>{order.customerName}</TableCell>
+                <TableCell>{order.userFullName}</TableCell>
                 <TableCell>
                   {new Date(order.createdAt).toLocaleDateString("vi-VN")}
                 </TableCell>
@@ -282,51 +339,131 @@ const OrderPage = () => {
                   {order.totalAmount.toLocaleString("vi-VN")}đ
                 </TableCell>
                 <TableCell>
-                  <Badge variant={getStatusBadgeVariant(order.orderStatus)}>
-                    {getStatusText(order.orderStatus)}
+                  <Badge variant={getStatusBadgeVariant(order.status)}>
+                    {getStatusText(order.status)}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant={
+                      order.paymentStatus === "PAID"
+                        ? "success"
+                        : order.paymentStatus === "REFUNDED"
+                        ? "default"
+                        : "warning"
+                    }
+                  >
+                    {order.paymentStatus === "PAID"
+                      ? "Đã thanh toán"
+                      : order.paymentStatus === "REFUNDED"
+                      ? "Đã hoàn tiền"
+                      : "Chưa thanh toán"}
                   </Badge>
                 </TableCell>
                 <TableCell
                   className="text-center"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <Select
-                    value={order.orderStatus}
-                    onValueChange={(value) =>
-                      handleStatusChange(order.id, value as OrderStatus)
-                    }
-                    disabled={
-                      actionLoading === order.id ||
-                      order.orderStatus === "CANCELLED"
-                    }
-                  >
-                    <SelectTrigger className="w-36">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PENDING">Chờ xử lý</SelectItem>
-                      <SelectItem value="CONFIRMED">Xác nhận</SelectItem>
-                      <SelectItem value="PROCESSING">Xử lý</SelectItem>
-                      <SelectItem value="SHIPPING">Giao hàng</SelectItem>
-                      <SelectItem value="DELIVERED">Hoàn thành</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {order.orderStatus !== "CANCELLED" &&
-                    order.orderStatus !== "DELIVERED" && (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleCancelOrder(order.id)}
-                        disabled={actionLoading === order.id}
-                        className="ml-2"
-                      >
-                        {actionLoading === order.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          "Hủy"
+                  <div className="flex gap-2 justify-center items-center">
+                    {actionLoading === order.id ? (
+                      <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                    ) : (
+                      <>
+                        {/* PENDING: Show Confirm + Cancel */}
+                        {order.status === "PENDING" && (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => handleConfirmOrder(order.id)}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              ✓ Xác nhận
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleCancelOrder(order.id)}
+                            >
+                              ✕ Hủy
+                            </Button>
+                          </>
                         )}
-                      </Button>
+
+                        {/* CONFIRMED: Show Process + Cancel */}
+                        {order.status === "CONFIRMED" && (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => handleProcessOrder(order.id)}
+                              className="bg-blue-600 hover:bg-blue-700"
+                            >
+                              → Xử lý
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleCancelOrder(order.id)}
+                            >
+                              ✕ Hủy
+                            </Button>
+                          </>
+                        )}
+
+                        {/* PROCESSING: Show Ship + Cancel */}
+                        {order.status === "PROCESSING" && (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => handleShipOrder(order.id)}
+                              className="bg-purple-600 hover:bg-purple-700"
+                            >
+                              🚚 Giao hàng
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleCancelOrder(order.id)}
+                            >
+                              ✕ Hủy
+                            </Button>
+                          </>
+                        )}
+
+                        {/* SHIPPING: Show Deliver */}
+                        {order.status === "SHIPPING" && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleDeliverOrder(order.id)}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            ✓ Đã giao
+                          </Button>
+                        )}
+
+                        {/* DELIVERED/CANCELLED: No actions, show payment status update if needed */}
+                        {order.status === "DELIVERED" &&
+                          order.paymentStatus === "UNPAID" && (
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                handleUpdatePaymentStatus(order.id)
+                              }
+                              variant="outline"
+                            >
+                              💰 Đánh dấu đã thanh toán
+                            </Button>
+                          )}
+
+                        {(order.status === "DELIVERED" ||
+                          order.status === "CANCELLED") &&
+                          order.paymentStatus === "PAID" && (
+                            <span className="text-sm text-gray-500 italic">
+                              Hoàn tất
+                            </span>
+                          )}
+                      </>
                     )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

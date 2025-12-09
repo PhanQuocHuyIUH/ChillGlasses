@@ -201,70 +201,71 @@ const CartPage = () => {
               {/* Danh sách item */}
               <div className="space-y-4">
                 {items.map((item) => (
-                    <div
-                        key={item.id}
-                        className="flex items-center justify-between bg-white shadow rounded-lg p-4"
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between bg-white shadow rounded-lg p-4"
+                  >
+                    {/* Khi nhấn vào sản phẩm → chuyển đến product/id */}
+                    <Link
+                      href={`/products/${item.productId}`}
+                      className="flex items-center gap-4 hover:opacity-80"
                     >
-                      <div className="flex items-center gap-4">
-                        <Image
-                            src={item.productImageUrl || "/images/product1.jpg"}
-                            alt={item.productName}
-                            width={80}
-                            height={80}
-                            className="rounded-md object-cover"
-                        />
-                        <div>
-                          <h2 className="font-medium">{item.productName}</h2>
-                          <p className="text-sm text-gray-500">
-                            {formatPrice(item.productPrice)} đ
-                          </p>
-                          <p className="text-xs text-gray-400">
-                            {item.brand} • Còn {item.stockQuantity} sp
-                          </p>
-                        </div>
-                      </div>
+                      <Image
+                        src={item.productImageUrl || "/images/product1.jpg"}
+                        alt={item.productName}
+                        width={80}
+                        height={80}
+                        className="rounded-md object-cover"
+                      />
 
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center border rounded">
-                          <button
-                              onClick={() => decreaseQty(item)}
-                              disabled={
-                                  item.quantity <= 1 ||
-                                  updatingItemId === item.id ||
-                                  clearing
-                              }
-                              className="px-3 py-1 disabled:opacity-50"
-                          >
-                            −
-                          </button>
-                          <span className="px-3">{item.quantity}</span>
-                          <button
-                              onClick={() => increaseQty(item)}
-                              disabled={
-                                  item.quantity >= item.stockQuantity ||
-                                  updatingItemId === item.id ||
-                                  clearing
-                              }
-                              className="px-3 py-1 disabled:opacity-50"
-                          >
-                            +
-                          </button>
-                        </div>
-
-                        <p className="font-semibold w-28 text-right">
-                          {formatPrice(item.subtotal)} đ
+                      <div>
+                        <h2 className="font-medium">{item.productName}</h2>
+                        <p className="text-sm text-gray-500">
+                          {formatPrice(item.productPrice)} đ
                         </p>
+                        <p className="text-xs text-gray-400">
+                          {item.brand} • Còn {item.stockQuantity} sp
+                        </p>
+                      </div>
+                    </Link>
+
+                    {/* Vùng thao tác (không click vào link) */}
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center border rounded">
+                        <button
+                          onClick={() => decreaseQty(item)}
+                          disabled={item.quantity <= 1 || updatingItemId === item.id || clearing}
+                          className="px-3 py-1 disabled:opacity-50"
+                        >
+                          −
+                        </button>
+
+                        <span className="px-3">{item.quantity}</span>
 
                         <button
-                            onClick={() => removeItem(item)}
-                            disabled={updatingItemId === item.id || clearing}
-                            className="text-red-500 hover:underline text-sm disabled:opacity-50"
+                          onClick={() => increaseQty(item)}
+                          disabled={item.quantity >= item.stockQuantity || updatingItemId === item.id || clearing}
+                          className="px-3 py-1 disabled:opacity-50"
                         >
-                          Xóa
+                          +
                         </button>
                       </div>
+
+                      <p className="font-semibold w-28 text-right">
+                        {formatPrice(item.subtotal)} đ
+                      </p>
+
+                      <button
+                        onClick={() => removeItem(item)}
+                        disabled={updatingItemId === item.id || clearing}
+                        className="text-red-500 hover:underline text-sm disabled:opacity-50"
+                      >
+                        Xóa
+                      </button>
                     </div>
+                  </div>
                 ))}
+
               </div>
 
               {/* Tổng tiền + actions */}

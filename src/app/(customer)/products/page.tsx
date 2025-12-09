@@ -57,13 +57,13 @@ const PromotionPage = () => {
   );
 
   return (
-    <div className="text-black container mx-auto py-8 pt-24">
+    <div className="text-black w-full max-w-6xl mx-auto py-8 pt-24">
       <h1 className="text-3xl font-bold text-center mb-8">
         SẢN PHẨM ĐANG GIẢM GIÁ
       </h1>
 
       {discountedProducts.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 ">
           {discountedProducts.slice(0, visibleProducts).map((product) => {
             const imageUrl =
               product.primaryImageUrl && product.primaryImageUrl.trim() !== ""
@@ -74,7 +74,7 @@ const PromotionPage = () => {
               <Link
                 key={product.id}
                 href={`/products/${product.id}`}
-                className="border rounded-lg p-4 shadow hover:shadow-lg transition-shadow block bg-white"
+                className="border hover:-translate-y-1 rounded-lg p-4 shadow hover:shadow-lg transition-shadow block bg-white"
               >
                 <div className="w-full h-40 relative mb-3">
                   <Image
