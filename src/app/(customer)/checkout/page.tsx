@@ -448,7 +448,7 @@ const CheckoutPage = () => {
 
       alert("Đặt hàng thành công! Mã đơn: " + order.orderCode);
 
-      router.push("/orders");
+      router.push(`/orders/${order.id}`);
     } catch (err) {
       console.error("❌ Lỗi khi tạo đơn hàng:", err);
       alert("Đặt hàng thất bại. Vui lòng thử lại sau.");

@@ -1,18 +1,17 @@
-// src/lib/api/orders.ts
 import axiosClient from "./axios";
 
 /** ===== KIỂU CHUNG TỪ BACKEND ===== */
 
 export type OrderStatus =
-  | "PENDING"
-  | "CONFIRMED"
-  | "PROCESSING"
-  | "SHIPPING"
-  | "DELIVERED"
-  | "CANCELLED"
+    | "PENDING"
+    | "CONFIRMED"
+    | "PROCESSING"
+    | "SHIPPING"
+    | "DELIVERED"
+    | "CANCELLED"
+    | "REFUNDED";
 
 export type PaymentMethodApi = "COD" | "BANK_TRANSFER" | "E_WALLET";
-
 export type ShippingMethodApi = "STANDARD" | "EXPRESS";
 
 type ApiResponse<T> = {
@@ -47,6 +46,7 @@ export interface OrderSummary {
   paymentStatus: string;
   totalItems: number;
   createdAt: string;
+
   // 🔹 Bổ sung cho promotion – khớp OrderSummaryDTO bên BE
   promotionCode?: string;
   promotionDiscountAmount?: number;
@@ -87,12 +87,23 @@ export interface OrderDetail {
   totalItems: number;
   createdAt: string;
   updatedAt: string;
+
   // 🔹 Bổ sung cho promotion (khớp OrderDTO bên BE)
   promotionCode?: string;
   promotionDiscountAmount?: number;
   formattedPromotionDiscountAmount?: string;
   promotionDescription?: string;
 }
+
+/** 🔹 Helper: xác định đơn đã hủy + đã hoàn tiền (online) */
+export function isRefundedOrder(order: OrderSummary | OrderDetail) {
+  return (
+      order.status === "CANCELLED" &&
+      order.paymentMethod !== "COD" &&
+      order.paymentStatus === "PAID"
+  );
+}
+
 
 export interface CreateOrderRequest {
   paymentMethod: PaymentMethodApi;
@@ -104,25 +115,25 @@ export interface CreateOrderRequest {
 
 /** ===== API: TẠO ĐƠN HÀNG TỪ CART ===== */
 export const createOrder = async (
-  payload: CreateOrderRequest
+    payload: CreateOrderRequest
 ): Promise<OrderDetail> => {
   const res = await axiosClient.post<ApiResponse<OrderDetail>>(
-    "/orders",
-    payload
+      "/orders",
+      payload
   );
   return res.data.data;
 };
 
 /** ===== API: LẤY LIST ĐƠN HÀNG (MY ORDERS) ===== */
 export const getMyOrders = async (
-  page = 0,
-  size = 20
+    page = 0,
+    size = 20
 ): Promise<OrderSummary[]> => {
   const res = await axiosClient.get<ApiResponse<PageResponse<OrderSummary>>>(
-    "/orders/my-orders",
-    {
-      params: { page, size },
-    }
+      "/orders/my-orders",
+      {
+        params: { page, size },
+      }
   );
 
   const pageData = res.data.data;
@@ -135,10 +146,10 @@ export const getMyOrders = async (
 
 /** ===== API: LẤY LIST ĐƠN THEO STATUS ===== */
 export const getMyOrdersByStatus = async (
-  status: OrderStatus
+    status: OrderStatus
 ): Promise<OrderSummary[]> => {
   const res = await axiosClient.get<ApiResponse<OrderSummary[]>>(
-    `/orders/my-orders/status/${status}`
+      `/orders/my-orders/status/${status}`
   );
   return Array.isArray(res.data.data) ? res.data.data : [];
 };
@@ -160,14 +171,35 @@ export interface CancelOrderPayload {
   otherReason?: string; // Lý do khác (raw)
 }
 
+/** ===== API: GIẢ LẬP THANH TOÁN THÀNH CÔNG (ONLINE) ===== */
+export const markPaymentSuccess = async (
+    orderId: number
+): Promise<OrderDetail> => {
+  const res = await axiosClient.post<ApiResponse<OrderDetail>>(
+      `/orders/${orderId}/payment/success`
+  );
+  return res.data.data;
+};
+
+/** ===== API: GIẢ LẬP THANH TOÁN THẤT BẠI (ONLINE) ===== */
+export const markPaymentFail = async (
+    orderId: number
+): Promise<OrderDetail> => {
+  const res = await axiosClient.post<ApiResponse<OrderDetail>>(
+      `/orders/${orderId}/payment/fail`
+  );
+  return res.data.data;
+};
+
+
 export const requestCancelOrder = async (
-  orderId: number,
-  payload?: CancelOrderPayload
+    orderId: number,
+    payload?: CancelOrderPayload
 ): Promise<OrderDetail> => {
   try {
     const res = await axiosClient.post<ApiResponse<OrderDetail>>(
-      `/orders/${orderId}/cancel`,
-      payload ?? {}
+        `/orders/${orderId}/cancel`,
+        payload ?? {}
     );
 
     return res.data.data;
