@@ -8,11 +8,12 @@ import {
   type OrderDetail,
   type OrderStatus,
   requestCancelOrder,
+  markPaymentSuccess,
+  markPaymentFail,
+  isRefundedOrder, // ⬅ thêm dòng này
 } from "@/lib/api/orders";
 
-const formatPrice = (value: number) => {
-  return value.toLocaleString("vi-VN");
-};
+const formatPrice = (value: number) => value.toLocaleString("vi-VN");
 
 const formatDateTime = (iso: string) => {
   const d = new Date(iso);
@@ -20,6 +21,7 @@ const formatDateTime = (iso: string) => {
   return d.toLocaleString("vi-VN");
 };
 
+// ✅ Đồng bộ với enum BE: PENDING, CONFIRMED, PROCESSING, SHIPPING, DELIVERED, CANCELLED, REFUNDED
 const statusLabel: Record<OrderStatus, string> = {
   PENDING: "Chờ xác nhận",
   CONFIRMED: "Đã xác nhận",
@@ -37,8 +39,23 @@ const statusBadgeClass: Record<OrderStatus, string> = {
   SHIPPING: "bg-indigo-100 text-indigo-700",
   DELIVERED: "bg-green-100 text-green-700",
   CANCELLED: "bg-red-100 text-red-700",
-  REFUNDED: "bg-gray-100 text-gray-700",
+  REFUNDED: "bg-gray-200 text-gray-700",
 };
+
+/** 🔹 Label & màu hiển thị trạng thái, xử lý riêng case đã hoàn tiền */
+const getStatusDisplay = (order: OrderDetail): string => {
+  return isRefundedOrder(order)
+      ? "ĐÃ HỦY (ĐÃ HOÀN TIỀN)"
+      : statusLabel[order.status];
+};
+
+const getStatusBadgeClass = (order: OrderDetail): string => {
+  if (isRefundedOrder(order)) {
+    return "bg-emerald-100 text-emerald-700";
+  }
+  return statusBadgeClass[order.status];
+};
+
 
 const CANCEL_REASONS = [
   "Mua nhầm số lượng",
@@ -61,6 +78,34 @@ const OrderDetailPage = () => {
   const [cancelReasons, setCancelReasons] = useState<string[]>([]);
   const [otherReason, setOtherReason] = useState("");
   const [submittingCancel, setSubmittingCancel] = useState(false);
+
+  // ====================== MOCK PAYMENT HANDLERS ======================
+
+  const handleMockPaymentSuccess = async () => {
+    if (!order) return;
+    try {
+      const updated = await markPaymentSuccess(order.id);
+      setOrder(updated);
+      alert("Đã giả lập thanh toán THÀNH CÔNG cho đơn hàng này.");
+    } catch (err) {
+      console.error("Lỗi mock payment success:", err);
+      alert("Không thể đánh dấu thanh toán thành công. Vui lòng thử lại.");
+    }
+  };
+
+  const handleMockPaymentFail = async () => {
+    if (!order) return;
+    try {
+      const updated = await markPaymentFail(order.id);
+      setOrder(updated);
+      alert("Đã giả lập thanh toán THẤT BẠI cho đơn hàng này.");
+    } catch (err) {
+      console.error("Lỗi mock payment fail:", err);
+      alert("Không thể đánh dấu thanh toán thất bại. Vui lòng thử lại.");
+    }
+  };
+
+  // ====================== LOCAL STORAGE CHO LÝ DO HỦY ======================
 
   const getLocalCancelNote = (id: number): string | undefined => {
     if (typeof window === "undefined") return undefined;
@@ -89,6 +134,8 @@ const OrderDetailPage = () => {
     }
   };
 
+  // ====================== LOAD CHI TIẾT ĐƠN ======================
+
   useEffect(() => {
     if (!orderId) {
       setError("Thiếu mã đơn hàng trên URL.");
@@ -113,16 +160,10 @@ const OrderDetailPage = () => {
 
         if (!isMounted) return;
 
+        // Nếu BE không lưu notes cho CANCELLED thì lấy từ localStorage (legacy)
         if (data.status === "CANCELLED" && !data.notes) {
           const localNote = getLocalCancelNote(data.id);
-          setOrder(
-            localNote
-              ? {
-                  ...data,
-                  notes: localNote,
-                }
-              : data
-          );
+          setOrder(localNote ? { ...data, notes: localNote } : data);
         } else {
           setOrder(data);
         }
@@ -143,56 +184,57 @@ const OrderDetailPage = () => {
     };
   }, [orderId]);
 
-  // ✅ Chính đạo tiền: tin BE, không tự suy shippingFee nữa
+  // ====================== TÍNH TOÁN TỔNG TIỀN ======================
+
   const subtotal =
-    order?.items.reduce(
-      (sum, item) => sum + item.productPrice * item.quantity,
-      0
-    ) ?? 0;
+      order?.items.reduce(
+          (sum, item) => sum + item.productPrice * item.quantity,
+          0
+      ) ?? 0;
 
   const shippingFee =
-    order && typeof order.shippingFee === "number" ? order.shippingFee : 0;
+      order && typeof order.shippingFee === "number" ? order.shippingFee : 0;
 
   const anyOrder = order as any;
   const promotionDiscountAmount: number =
-    anyOrder?.promotionDiscountAmount &&
-    typeof anyOrder.promotionDiscountAmount === "number"
-      ? anyOrder.promotionDiscountAmount
-      : 0;
+      anyOrder?.promotionDiscountAmount &&
+      typeof anyOrder.promotionDiscountAmount === "number"
+          ? anyOrder.promotionDiscountAmount
+          : 0;
 
   const formattedPromotionDiscountAmount: string | null =
-    typeof anyOrder?.formattedPromotionDiscountAmount === "string"
-      ? anyOrder.formattedPromotionDiscountAmount
-      : promotionDiscountAmount > 0
-      ? formatPrice(promotionDiscountAmount) + " đ"
-      : null;
+      typeof anyOrder?.formattedPromotionDiscountAmount === "string"
+          ? anyOrder.formattedPromotionDiscountAmount
+          : promotionDiscountAmount > 0
+              ? formatPrice(promotionDiscountAmount) + " đ"
+              : null;
 
   const hasPromotion =
-    typeof anyOrder?.promotionCode === "string" &&
-    anyOrder.promotionCode.trim() !== "" &&
-    promotionDiscountAmount > 0;
+      typeof anyOrder?.promotionCode === "string" &&
+      anyOrder.promotionCode.trim() !== "" &&
+      promotionDiscountAmount > 0;
 
   const beTotalAmount =
-    order && typeof order.totalAmount === "number"
-      ? order.totalAmount
-      : subtotal + shippingFee - promotionDiscountAmount;
+      order && typeof order.totalAmount === "number"
+          ? order.totalAmount
+          : subtotal + shippingFee - promotionDiscountAmount;
 
   const formattedBeTotal =
-    typeof anyOrder?.formattedTotalAmount === "string"
-      ? anyOrder.formattedTotalAmount
-      : formatPrice(beTotalAmount) + " đ";
+      typeof anyOrder?.formattedTotalAmount === "string"
+          ? anyOrder.formattedTotalAmount
+          : formatPrice(beTotalAmount) + " đ";
+
+  // ====================== HỦY ĐƠN ======================
 
   const toggleReason = (reason: string) => {
     setCancelReasons((prev) =>
-      prev.includes(reason)
-        ? prev.filter((r) => r !== reason)
-        : [...prev, reason]
+        prev.includes(reason)
+            ? prev.filter((r) => r !== reason)
+            : [...prev, reason]
     );
   };
 
-  const handleOpenCancelModal = () => {
-    setShowCancelModal(true);
-  };
+  const handleOpenCancelModal = () => setShowCancelModal(true);
 
   const handleCloseCancelModal = () => {
     setShowCancelModal(false);
@@ -222,7 +264,8 @@ const OrderDetailPage = () => {
     try {
       setSubmittingCancel(true);
 
-      await requestCancelOrder(order.id, {
+      // ⬇️ Lấy luôn order mới từ BE, để status có thể là CANCELLED hoặc REFUNDED
+      const updated = await requestCancelOrder(order.id, {
         notes: cancelNote,
         reasons: cancelReasons,
         otherReason: otherReason.trim() || undefined,
@@ -230,18 +273,10 @@ const OrderDetailPage = () => {
 
       saveLocalCancelNote(order.id, cancelNote);
 
-      setOrder((prev) =>
-        prev
-          ? {
-              ...prev,
-              status: "CANCELLED" as OrderStatus,
-              notes: cancelNote,
-            }
-          : prev
-      );
+      // BE đã set status + notes chuẩn → dùng luôn
+      setOrder(updated);
 
       alert("Đơn hàng đã được hủy. Cảm ơn bạn đã cho chúng tôi biết lý do.");
-
       setShowCancelModal(false);
     } catch (err) {
       console.error("Lỗi khi gửi yêu cầu hủy đơn:", err);
@@ -251,290 +286,338 @@ const OrderDetailPage = () => {
     }
   };
 
-  const canRequestCancel = order && order.status === "PENDING";
+  // ✅ Cho phép hủy khi PENDING hoặc PROCESSING
+  const canRequestCancel =
+      order && (order.status === "PENDING" || order.status === "PROCESSING");
+
+  // ====================== RENDER ======================
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 pt-24 pb-32 px-4">
-        <div className="max-w-4xl mx-auto text-center text-gray-500">
-          Đang tải chi tiết đơn hàng...
+        <div className="min-h-screen bg-gray-50 pt-24 pb-32 px-4">
+          <div className="max-w-4xl mx-auto text-center text-gray-500">
+            Đang tải chi tiết đơn hàng...
+          </div>
         </div>
-      </div>
     );
   }
 
   if (error || !order) {
     return (
-      <div className="min-h-screen bg-gray-50 pt-24 pb-32 px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <p className="text-red-500 mb-4">
-            {error || "Không tìm thấy đơn hàng."}
-          </p>
-          <button
-            onClick={() => router.push("/orders")}
-            className="inline-block px-4 py-2 text-sm bg-black text-white rounded-lg"
-          >
-            Quay lại lịch sử đơn hàng
-          </button>
+        <div className="min-h-screen bg-gray-50 pt-24 pb-32 px-4">
+          <div className="max-w-4xl mx-auto text-center">
+            <p className="text-red-500 mb-4">
+              {error || "Không tìm thấy đơn hàng."}
+            </p>
+            <button
+                onClick={() => router.push("/orders")}
+                className="inline-block px-4 py-2 text-sm bg-black text-white rounded-lg"
+            >
+              Quay lại lịch sử đơn hàng
+            </button>
+          </div>
         </div>
-      </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 pt-24 pb-32 px-4">
-      <div className="max-w-4xl mx-auto space-y-8">
-        {/* Header + trạng thái + quay lại */}
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">
-              Chi tiết đơn hàng {order.orderCode}
-            </h1>
-            <p className="text-gray-500 text-sm mt-1">
-              Ngày đặt: {formatDateTime(order.orderDate)}
-            </p>
-          </div>
+      <div className="min-h-screen bg-gray-100 pt-24 pb-32 px-4">
+        <div className="max-w-4xl mx-auto space-y-8">
+          {/* Header + trạng thái + quay lại */}
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold">
+                Chi tiết đơn hàng {order.orderCode}
+              </h1>
+              <p className="text-gray-500 text-sm mt-1">
+                Ngày đặt: {formatDateTime(order.orderDate)}
+              </p>
+            </div>
 
-          <div className="flex flex-col items-end gap-2">
+            <div className="flex flex-col items-end gap-2">
             <span
-              className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
-                statusBadgeClass[order.status]
-              }`}
+                className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(
+                    order
+                )}`}
             >
-              {statusLabel[order.status]}
+              {getStatusDisplay(order)}
             </span>
-            <button
-              type="button"
-              onClick={() => router.push("/orders")}
-              className="text-xs text-blue-600 hover:underline"
-            >
-              ⟵ Quay lại lịch sử đơn hàng
-            </button>
-          </div>
-        </div>
 
-        {/* Nếu là đơn đã hủy và có lý do hủy → show block */}
-        {order.status === "CANCELLED" && order.notes && (
-          <div className="bg-red-50 border border-red-200 text-red-800 text-sm px-4 py-3 rounded-lg">
-            <p className="font-semibold mb-1">Lý do hủy đơn hàng:</p>
-            <p>{order.notes}</p>
+              <button
+                  type="button"
+                  onClick={() => router.push("/orders")}
+                  className="text-xs text-blue-600 hover:underline"
+              >
+                ⟵ Quay lại lịch sử đơn hàng
+              </button>
+            </div>
           </div>
-        )}
 
-        {/* Thông tin đơn hàng */}
-        <div className="bg-white shadow p-6 rounded-lg space-y-2">
-          <h2 className="text-lg font-semibold mb-2">Thông tin đơn hàng</h2>
-          <p>
-            <strong>Khách hàng:</strong> {order.userFullName}
-          </p>
-          <p>
-            <strong>Email:</strong> {order.userEmail}
-          </p>
-          <p>
-            <strong>Địa chỉ giao hàng:</strong> {order.shippingAddress}
-          </p>
-          <p>
-            <strong>Phương thức giao hàng:</strong> {order.shippingMethod}
-          </p>
-          <p>
-            <strong>Thanh toán:</strong> {order.paymentMethod} (
-            {order.paymentStatus === "PAID"
-              ? "Đã thanh toán"
-              : "Chưa thanh toán"}
-            )
-          </p>
-          {/* Ghi chú gốc từ checkout (nếu có, và đơn không bị hủy) */}
-          {order.notes && order.status !== "CANCELLED" && (
+          {/* Nếu là đơn đã hủy / hoàn tiền và có lý do hủy → show block */}
+          {(order.status === "CANCELLED" || order.status === "REFUNDED") &&
+              order.notes && (
+                  <div className="bg-red-50 border border-red-200 text-red-800 text-sm px-4 py-3 rounded-lg">
+                    <p className="font-semibold mb-1">
+                      {order.status === "REFUNDED"
+                          ? "Đơn hàng đã được hoàn tiền. Lý do hủy:"
+                          : "Lý do hủy đơn hàng:"}
+                    </p>
+                    <p>{order.notes}</p>
+                  </div>
+              )}
+
+          {/* Thông tin đơn hàng */}
+          <div className="bg-white shadow p-6 rounded-lg space-y-2">
+            <h2 className="text-lg font-semibold mb-2">Thông tin đơn hàng</h2>
             <p>
-              <strong>Ghi chú:</strong> {order.notes}
+              <strong>Khách hàng:</strong> {order.userFullName}
             </p>
-          )}
+            <p>
+              <strong>Email:</strong> {order.userEmail}
+            </p>
+            <p>
+              <strong>Địa chỉ giao hàng:</strong> {order.shippingAddress}
+            </p>
+            <p>
+              <strong>Phương thức giao hàng:</strong> {order.shippingMethod}
+            </p>
+            <p>
+              <strong>Thanh toán:</strong> {order.paymentMethod} (
+              {order.paymentStatus === "PAID" ? "Đã thanh toán" : "Chưa thanh toán"}
+              )
+            </p>
 
-          {/* Hiển thị thông tin khuyến mãi (nếu có) */}
-          {hasPromotion && (
-            <div className="mt-2 text-sm text-green-700">
-              <p>
-                <strong>Mã khuyến mãi:</strong> {anyOrder.promotionCode}
-              </p>
-              <p>
-                <strong>Giảm giá áp dụng:</strong>{" "}
-                {formattedPromotionDiscountAmount}
-              </p>
-              {typeof anyOrder.promotionDescription === "string" &&
-                anyOrder.promotionDescription.trim() !== "" && (
-                  <p>
-                    <strong>Mô tả:</strong> {anyOrder.promotionDescription}
-                  </p>
+            {/* Ghi chú gốc từ checkout (nếu có, và đơn không bị hủy / hoàn tiền) */}
+            {order.notes &&
+                order.status !== "CANCELLED" &&
+                order.status !== "REFUNDED" && (
+                    <p>
+                      <strong>Ghi chú:</strong> {order.notes}
+                    </p>
                 )}
-            </div>
-          )}
-        </div>
 
-        {/* Sản phẩm */}
-        <div className="bg-white shadow p-6 rounded-lg">
-          <h2 className="text-lg font-semibold mb-4">Sản phẩm</h2>
-
-          <div className="space-y-4">
-            {order.items.map((item) => {
-              const safeImageSrc =
-                item.productImage &&
-                typeof item.productImage === "string" &&
-                item.productImage.trim() !== ""
-                  ? item.productImage
-                  : "/images/product1.jpg";
-
-              return (
-                <div
-                  key={item.id}
-                  className="flex items-center gap-4 border-b pb-4 last:border-b-0"
-                >
-                  <div className="w-20 h-20 relative bg-gray-100 rounded overflow-hidden">
-                    <Image
-                      src={safeImageSrc}
-                      alt={item.productName || "Sản phẩm"}
-                      fill
-                      className="object-cover rounded"
-                    />
-                  </div>
-
-                  <div className="flex-1">
-                    <p className="font-semibold">{item.productName}</p>
-                    <p className="text-gray-500 text-xs">
-                      Mã sản phẩm: {item.productSlug}
-                    </p>
-                    <p className="text-gray-600 text-sm">
-                      {item.formattedPrice} x {item.quantity}
-                    </p>
-                  </div>
-
-                  <p className="font-semibold text-sm">
-                    {item.formattedSubtotal}
+            {/* Hiển thị thông tin khuyến mãi (nếu có) */}
+            {hasPromotion && (
+                <div className="mt-2 text-sm text-green-700">
+                  <p>
+                    <strong>Mã khuyến mãi:</strong> {anyOrder.promotionCode}
                   </p>
+                  <p>
+                    <strong>Giảm giá áp dụng:</strong>{" "}
+                    {formattedPromotionDiscountAmount}
+                  </p>
+                  {typeof anyOrder.promotionDescription === "string" &&
+                      anyOrder.promotionDescription.trim() !== "" && (
+                          <p>
+                            <strong>Mô tả:</strong> {anyOrder.promotionDescription}
+                          </p>
+                      )}
                 </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Tổng tiền: dùng totalAmount + promotion từ BE */}
-        <div className="bg-white shadow p-6 rounded-lg space-y-2">
-          <h2 className="text-lg font-semibold">Tổng tiền</h2>
-          <div className="flex justify-between text-sm">
-            <span>Tạm tính:</span>
-            <span>{formatPrice(subtotal)} đ</span>
+            )}
           </div>
 
-          {hasPromotion && (
-            <div className="flex justify-between text-sm text-green-700">
-              <span>Giảm giá:</span>
-              <span>
-                -
-                {formattedPromotionDiscountAmount ??
-                  formatPrice(promotionDiscountAmount) + " đ"}
-              </span>
+          {/* Sản phẩm */}
+          <div className="bg-white shadow p-6 rounded-lg">
+            <h2 className="text-lg font-semibold mb-4">Sản phẩm</h2>
+
+            <div className="space-y-4">
+              {order.items.map((item) => {
+                const safeImageSrc =
+                    item.productImage &&
+                    typeof item.productImage === "string" &&
+                    item.productImage.trim() !== ""
+                        ? item.productImage
+                        : "/images/product1.jpg";
+
+                return (
+                    <div
+                        key={item.id}
+                        className="flex items-center gap-4 border-b pb-4 last:border-b-0"
+                    >
+                      <div className="w-20 h-20 relative bg-gray-100 rounded overflow-hidden">
+                        <Image
+                            src={safeImageSrc}
+                            alt={item.productName || "Sản phẩm"}
+                            fill
+                            className="object-cover rounded"
+                        />
+                      </div>
+
+                      <div className="flex-1">
+                        <p className="font-semibold">{item.productName}</p>
+                        <p className="text-gray-500 text-xs">
+                          Mã sản phẩm: {item.productSlug}
+                        </p>
+                        <p className="text-gray-600 text-sm">
+                          {item.formattedPrice} x {item.quantity}
+                        </p>
+                      </div>
+
+                      <p className="font-semibold text-sm">
+                        {item.formattedSubtotal}
+                      </p>
+                    </div>
+                );
+              })}
             </div>
+          </div>
+
+          {/* Tổng tiền */}
+          <div className="bg-white shadow p-6 rounded-lg space-y-2">
+            <h2 className="text-lg font-semibold">Tổng tiền</h2>
+            <div className="flex justify-between text-sm">
+              <span>Tạm tính:</span>
+              <span>{formatPrice(subtotal)} đ</span>
+            </div>
+
+            {hasPromotion && (
+                <div className="flex justify-between text-sm text-green-700">
+                  <span>Giảm giá:</span>
+                  <span>
+                -
+                    {formattedPromotionDiscountAmount ??
+                        formatPrice(promotionDiscountAmount) + " đ"}
+              </span>
+                </div>
+            )}
+
+            <div className="flex justify-between text-sm">
+              <span>Phí giao hàng:</span>
+              <span>{formatPrice(shippingFee)} đ</span>
+            </div>
+
+            <div className="flex justify-between font-bold text-lg pt-2 border-t mt-2">
+              <span>Tổng cộng:</span>
+              <span>{formattedBeTotal}</span>
+            </div>
+          </div>
+
+          {/* 🔹 Demo thanh toán online
+            Chỉ hiện khi:
+            - paymentMethod !== COD
+            - paymentStatus !== PAID
+            - status không phải CANCELLED / REFUNDED
+        */}
+          {order.paymentMethod !== "COD" &&
+              order.paymentStatus !== "PAID" &&
+              order.status !== "CANCELLED" &&
+              order.status !== "REFUNDED" && (
+                  <div className="bg-blue-50 border border-blue-200 text-blue-800 text-xs md:text-sm px-4 py-3 rounded-lg space-y-2">
+                    <p className="font-semibold">
+                      Demo thanh toán online (chỉ dùng trong môi trường dev):
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                          type="button"
+                          onClick={handleMockPaymentSuccess}
+                          className="px-3 py-2 rounded-lg bg-green-500 text-white font-semibold text-xs md:text-sm hover:bg-green-600"
+                      >
+                        Giả lập thanh toán THÀNH CÔNG
+                      </button>
+                      <button
+                          type="button"
+                          onClick={handleMockPaymentFail}
+                          className="px-3 py-2 rounded-lg bg-red-500 text-white font-semibold text-xs md:text-sm hover:bg-red-600"
+                      >
+                        Giả lập thanh toán THẤT BẠI
+                      </button>
+                    </div>
+                    <p>
+                      Sau khi bấm, trạng thái thanh toán sẽ cập nhật theo dữ liệu mới
+                      từ backend (PAID / UNPAID).
+                    </p>
+                  </div>
+              )}
+
+          {/* Hủy đơn hoặc hỗ trợ */}
+          {canRequestCancel ? (
+              <button
+                  className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg text-sm"
+                  type="button"
+                  onClick={handleOpenCancelModal}
+              >
+                Yêu cầu hủy đơn
+              </button>
+          ) : (
+              <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm px-4 py-3 rounded-lg">
+                <p className="font-semibold mb-1">Quý khách hàng xin lưu ý:</p>
+                <p>
+                  Cần hỗ trợ, vui lòng liên hệ: Điện thoại:{" "}
+                  <span className="font-semibold">0123 456 789</span> hoặc Email:{" "}
+                  <span className="font-semibold">support@chillglasses.com</span>{" "}
+                  (hỗ trợ 24/24).
+                </p>
+              </div>
           )}
-
-          <div className="flex justify-between text-sm">
-            <span>Phí giao hàng:</span>
-            <span>{formatPrice(shippingFee)} đ</span>
-          </div>
-
-          <div className="flex justify-between font-bold text-lg pt-2 border-t mt-2">
-            <span>Tổng cộng:</span>
-            <span>{formattedBeTotal}</span>
-          </div>
         </div>
 
-        {/* Hủy đơn hoặc hỗ trợ */}
-        {canRequestCancel ? (
-          <button
-            className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg text-sm"
-            type="button"
-            onClick={handleOpenCancelModal}
-          >
-            Yêu cầu hủy đơn
-          </button>
-        ) : (
-          <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm px-4 py-3 rounded-lg">
-            <p className="font-semibold mb-1">Quý khách hàng xin lưu ý:</p>
-            <p>
-              Cần hỗ trợ, vui lòng liên hệ: Điện thoại:{" "}
-              <span className="font-semibold">0123 456 789</span> hoặc Email:{" "}
-              <span className="font-semibold">support@chillglasses.com</span>{" "}
-              (hỗ trợ 24/24).
-            </p>
-          </div>
+        {/* Popup hủy đơn */}
+        {showCancelModal && (
+            <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+              <div className="bg-white w-full max-w-md rounded-lg shadow-lg p-6 relative">
+                <button
+                    type="button"
+                    onClick={handleCloseCancelModal}
+                    className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-sm"
+                >
+                  ✕
+                </button>
+
+                <h2 className="text-lg font-semibold mb-2">
+                  Yêu cầu hủy đơn {order.orderCode}
+                </h2>
+                <p className="text-xs text-gray-500 mb-4">
+                  Vui lòng chọn lý do hủy đơn. Thông tin này giúp chúng tôi cải
+                  thiện dịch vụ tốt hơn.
+                </p>
+
+                <div className="space-y-2 mb-3 text-sm">
+                  {CANCEL_REASONS.map((reason) => (
+                      <label key={reason} className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            checked={cancelReasons.includes(reason)}
+                            onChange={() => toggleReason(reason)}
+                        />
+                        <span>{reason}</span>
+                      </label>
+                  ))}
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1">
+                    Lý do khác (tuỳ chọn)
+                  </label>
+                  <textarea
+                      value={otherReason}
+                      onChange={(e) => setOtherReason(e.target.value)}
+                      className="w-full border rounded px-3 py-2 text-sm min-h-[70px]"
+                      placeholder="Nhập thêm thông tin nếu bạn muốn..."
+                  />
+                </div>
+
+                <div className="flex gap-2 justify-end text-sm">
+                  <button
+                      type="button"
+                      onClick={handleCloseCancelModal}
+                      className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                      disabled={submittingCancel}
+                  >
+                    Đóng
+                  </button>
+                  <button
+                      type="button"
+                      onClick={handleConfirmCancel}
+                      className="px-4 py-2 rounded-lg bg-red-500 text-white font-semibold hover:bg-red-600 disabled:opacity-60"
+                      disabled={submittingCancel}
+                  >
+                    {submittingCancel ? "Đang gửi..." : "Xác nhận hủy đơn"}
+                  </button>
+                </div>
+              </div>
+            </div>
         )}
       </div>
-
-      {/* Popup hủy đơn (giữ nguyên logic cũ) */}
-      {showCancelModal && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
-          <div className="bg-white w-full max-w-md rounded-lg shadow-lg p-6 relative">
-            <button
-              type="button"
-              onClick={handleCloseCancelModal}
-              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-sm"
-            >
-              ✕
-            </button>
-
-            <h2 className="text-lg font-semibold mb-2">
-              Yêu cầu hủy đơn {order.orderCode}
-            </h2>
-            <p className="text-xs text-gray-500 mb-4">
-              Vui lòng chọn lý do hủy đơn. Thông tin này giúp chúng tôi cải
-              thiện dịch vụ tốt hơn.
-            </p>
-
-            <div className="space-y-2 mb-3 text-sm">
-              {CANCEL_REASONS.map((reason) => (
-                <label key={reason} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={cancelReasons.includes(reason)}
-                    onChange={() => toggleReason(reason)}
-                  />
-                  <span>{reason}</span>
-                </label>
-              ))}
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">
-                Lý do khác (tuỳ chọn)
-              </label>
-              <textarea
-                value={otherReason}
-                onChange={(e) => setOtherReason(e.target.value)}
-                className="w-full border rounded px-3 py-2 text-sm min-h-[70px]"
-                placeholder="Nhập thêm thông tin nếu bạn muốn..."
-              />
-            </div>
-
-            <div className="flex gap-2 justify-end text-sm">
-              <button
-                type="button"
-                onClick={handleCloseCancelModal}
-                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
-                disabled={submittingCancel}
-              >
-                Đóng
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmCancel}
-                className="px-4 py-2 rounded-lg bg-red-500 text-white font-semibold hover:bg-red-600 disabled:opacity-60"
-                disabled={submittingCancel}
-              >
-                {submittingCancel ? "Đang gửi..." : "Xác nhận hủy đơn"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
   );
 };
 
