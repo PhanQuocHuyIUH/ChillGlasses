@@ -1,150 +1,159 @@
-// src/hooks/useCart.ts
 "use client";
 
-import { useEffect, useState } from "react";
-import type { Product } from "@/types/product";
+import { useEffect, useMemo, useState } from "react";
 
-export interface LocalCartItem {
+export interface GuestCartItem {
+  productId: number;
+  name: string;
+  slug: string;
+  price: number;
+  imageUrl: string;
+  brand: string;
+  stockQuantity: number;
+  quantity: number;
+}
+
+const STORAGE_KEY = "guest_cart";
+
+function loadCartFromStorage(): GuestCartItem[] {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+
+    const parsed: GuestCartItem[] = JSON.parse(raw);
+
+    // Sửa dữ liệu cũ: nếu quantity <= 0 thì cho thành 1
+    const fixed = parsed.map((item) => ({
+      ...item,
+      quantity: !item.quantity || item.quantity <= 0 ? 1 : item.quantity,
+    }));
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(fixed));
+    return fixed;
+  } catch (e) {
+    console.error("Lỗi đọc guest cart từ localStorage:", e);
+    return [];
+  }
+}
+
+function saveCartToStorage(items: GuestCartItem[]) {
+  if (typeof window === "undefined") return;
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  } catch (e) {
+    console.error("Lỗi lưu guest cart xuống localStorage:", e);
+  }
+}
+
+export function useCart() {
+  const [items, setItems] = useState<GuestCartItem[]>([]);
+
+  // Load từ localStorage khi mount
+  useEffect(() => {
+    const loaded = loadCartFromStorage();
+    setItems(loaded);
+  }, []);
+
+  // Tổng tiền
+  const totalAmount = useMemo(
+    () => items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    [items]
+  );
+
+  // Thêm sản phẩm vào giỏ (dùng cho khách vãng lai)
+  const addItem = (payload: {
     productId: number;
     name: string;
     slug: string;
     price: number;
-    imageUrl?: string;
+    imageUrl: string;
     brand: string;
     stockQuantity: number;
-    quantity: number;
-}
+    quantity?: number; // nếu không truyền → default = 1
+  }) => {
+    setItems((prev) => {
+      const qtyToAdd =
+        payload.quantity && payload.quantity > 0 ? payload.quantity : 1;
 
-const STORAGE_KEY = "guestCart";
+      const existingIndex = prev.findIndex(
+        (item) => item.productId === payload.productId
+      );
 
-function readStorage(): LocalCartItem[] {
-    if (typeof window === "undefined") return [];
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return [];
-        const parsed = JSON.parse(raw);
-        if (!Array.isArray(parsed)) return [];
-        return parsed;
-    } catch {
-        return [];
+      let updated: GuestCartItem[];
+
+      if (existingIndex >= 0) {
+        const current = prev[existingIndex];
+        const newQty = current.quantity + qtyToAdd;
+
+        updated = [...prev];
+        updated[existingIndex] = {
+          ...current,
+          quantity: newQty,
+        };
+      } else {
+        const newItem: GuestCartItem = {
+          productId: payload.productId,
+          name: payload.name,
+          slug: payload.slug,
+          price: payload.price,
+          imageUrl: payload.imageUrl,
+          brand: payload.brand,
+          stockQuantity: payload.stockQuantity,
+          quantity: qtyToAdd,
+        };
+
+        updated = [...prev, newItem];
+      }
+
+      saveCartToStorage(updated);
+      return updated;
+    });
+  };
+
+  // Cập nhật số lượng (nếu newQty <= 0 → xóa khỏi giỏ)
+  const updateQuantity = (productId: number, newQty: number) => {
+    setItems((prev) => {
+      let updated: GuestCartItem[];
+
+      if (newQty <= 0) {
+        updated = prev.filter((item) => item.productId !== productId);
+      } else {
+        updated = prev.map((item) =>
+          item.productId === productId ? { ...item, quantity: newQty } : item
+        );
+      }
+
+      saveCartToStorage(updated);
+      return updated;
+    });
+  };
+
+  // Xóa 1 sản phẩm
+  const removeItem = (productId: number) => {
+    setItems((prev) => {
+      const updated = prev.filter((item) => item.productId !== productId);
+      saveCartToStorage(updated);
+      return updated;
+    });
+  };
+
+  // Xóa toàn bộ giỏ
+  const clearCart = () => {
+    setItems([]);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(STORAGE_KEY);
     }
-}
+  };
 
-function writeStorage(items: LocalCartItem[]) {
-    if (typeof window === "undefined") return;
-    if (items.length === 0) {
-        localStorage.removeItem(STORAGE_KEY);
-    } else {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    }
-}
-
-export function useCart() {
-    const [items, setItems] = useState<LocalCartItem[]>([]);
-
-    // Load từ localStorage khi mount
-    useEffect(() => {
-        setItems(readStorage());
-    }, []);
-
-    const sync = (next: LocalCartItem[]) => {
-        setItems(next);
-        writeStorage(next);
-    };
-
-    // Thêm sản phẩm vào giỏ guest
-    const addItem = (product: Product, quantity: number) => {
-        if (!product || quantity <= 0) return;
-        if (product.stockQuantity <= 0) return;
-
-        const safeQty = Math.max(1, quantity);
-
-        setItems((prev) => {
-            const existing = prev.find((it) => it.productId === product.id);
-
-            if (!existing) {
-                const primaryImage = product.images?.find((img: any) => img.isPrimary);
-                const imageUrl =
-                    primaryImage && typeof primaryImage.imageUrl === "string"
-                        ? primaryImage.imageUrl
-                        : undefined;
-
-                const next: LocalCartItem[] = [
-                    ...prev,
-                    {
-                        productId: product.id,
-                        name: product.name,
-                        slug: product.slug,
-                        price: product.price,
-                        brand: product.brand,
-                        stockQuantity: product.stockQuantity,
-                        imageUrl,
-                        quantity: Math.min(safeQty, product.stockQuantity),
-                    },
-                ];
-                writeStorage(next);
-                return next;
-            }
-
-            const newQty = Math.min(
-                existing.quantity + safeQty,
-                existing.stockQuantity
-            );
-
-            const next = prev.map((it) =>
-                it.productId === product.id ? { ...it, quantity: newQty } : it
-            );
-            writeStorage(next);
-            return next;
-        });
-    };
-
-    // Cập nhật số lượng; nếu quantity <= 0 → xóa luôn (đúng yêu cầu đề)
-    const updateQuantity = (productId: number, quantity: number) => {
-        setItems((prev) => {
-            const existing = prev.find((it) => it.productId === productId);
-            if (!existing) return prev;
-
-            if (quantity <= 0) {
-                const filtered = prev.filter((it) => it.productId !== productId);
-                writeStorage(filtered);
-                return filtered;
-            }
-
-            const safeQty = Math.min(quantity, existing.stockQuantity);
-            const next = prev.map((it) =>
-                it.productId === productId ? { ...it, quantity: safeQty } : it
-            );
-            writeStorage(next);
-            return next;
-        });
-    };
-
-    const removeItem = (productId: number) => {
-        setItems((prev) => {
-            const next = prev.filter((it) => it.productId !== productId);
-            writeStorage(next);
-            return next;
-        });
-    };
-
-    const clearCart = () => {
-        sync([]);
-    };
-
-    const totalItems = items.reduce((sum, it) => sum + it.quantity, 0);
-    const totalAmount = items.reduce(
-        (sum, it) => sum + it.price * it.quantity,
-        0
-    );
-
-    return {
-        items,
-        addItem,
-        updateQuantity,
-        removeItem,
-        clearCart,
-        totalItems,
-        totalAmount,
-    };
+  return {
+    items,
+    totalAmount,
+    addItem,
+    updateQuantity,
+    removeItem,
+    clearCart,
+  };
 }

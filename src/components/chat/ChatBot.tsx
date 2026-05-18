@@ -27,7 +27,7 @@ interface Message {
 interface ProductSuggestion {
   productId: number;
   productName: string;
-  productSlug?: string;
+  // productSlug?: string;
   productUrl?: string;
   imageUrl: string;
   price: number;
@@ -265,10 +265,8 @@ export default function ChatBot() {
                         </p>
                         {message.productSuggestions.map((product) => {
                           const productLink =
-                            product.productUrl ||
-                            `/products/${
-                              product.productSlug || product.productId
-                            }`;
+                            // product.productUrl ||
+                            `/products/${product.productId}`;
 
                           return (
                             <Link
